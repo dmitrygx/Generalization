@@ -1,7 +1,5 @@
 #include "GeneralizationFile.h"
 
-
-
 GenaraliztionFile::GenaraliztionFile()
 {
 	path = "C:\\Users\\dgladkov\\Documents\\Education\\CourseWork\\coursework_big.txt";
