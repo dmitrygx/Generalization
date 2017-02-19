@@ -16,17 +16,38 @@
     <Filter Include="Source Files\main">
       <UniqueIdentifier>{d53af4c8-1fdc-4102-819a-c1705bdabdbf}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\curve">
+      <UniqueIdentifier>{6b09fa20-3efc-40bb-b3b3-6a7aaf95cfa2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\file">
+      <UniqueIdentifier>{f1974140-5afe-491d-9edf-e4572cf2a43b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\file">
+      <UniqueIdentifier>{d02d0ab4-783c-47d1-a81f-5bfc215b77d5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\curve">
+      <UniqueIdentifier>{9674ce2c-20b2-4e4f-9a92-54436a65571b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GenaraliztionFile.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Source Files\main</Filter>
+    </ClCompile>
+    <ClCompile Include="GenaraliztionFile.cpp">
+      <Filter>Source Files\file</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneralizationCurve.cpp">
+      <Filter>Source Files\curve</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GeneralizationFile.h">
+      <Filter>Header Files\file</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneralizationCurve.h">
+      <Filter>Header Files\curve</Filter>
+    </ClInclude>
+    <ClInclude Include="common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
