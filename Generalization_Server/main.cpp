@@ -14,6 +14,7 @@ static GenaraliztionFile GenFile;
 
 int main(int argc, char* argv[])
 {
+	/* TODO: should be removed, only should work as a server */
 	/*GenFile.ParseAllDataInFile();
 
 	curves Map = GenFile.GetCurves();*/
