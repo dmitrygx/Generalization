@@ -28,6 +28,18 @@
     <Filter Include="Header Files\curve">
       <UniqueIdentifier>{9674ce2c-20b2-4e4f-9a92-54436a65571b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\server">
+      <UniqueIdentifier>{1601eca0-92ea-4f2e-9869-7d950aac2f3d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\server">
+      <UniqueIdentifier>{9d1795e6-4afa-49c0-8da9-a6333b3d8fbd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\database">
+      <UniqueIdentifier>{f13b41e4-3acd-4884-affd-00f93f61a788}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\database">
+      <UniqueIdentifier>{5b75f77d-80e5-48dc-920c-a3244590f16a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -39,6 +51,18 @@
     <ClCompile Include="GeneralizationCurve.cpp">
       <Filter>Source Files\curve</Filter>
     </ClCompile>
+    <ClCompile Include="GeneralizationServer.cpp">
+      <Filter>Source Files\server</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneralizationRequestCurve.cpp">
+      <Filter>Source Files\server</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneralizationDataBase.cpp">
+      <Filter>Source Files\database</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneralizationDataBaseLoadFuncs.cpp">
+      <Filter>Source Files\database</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GeneralizationFile.h">
@@ -49,6 +73,18 @@
     </ClInclude>
     <ClInclude Include="common.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneralizationServer.h">
+      <Filter>Header Files\server</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneralizationRequestCurve.h">
+      <Filter>Header Files\server</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneralizationDataBase.h">
+      <Filter>Header Files\database</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneralizationDataBaseLoadFuncs.h">
+      <Filter>Header Files\database</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -91,6 +91,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalUsingDirectories>System</AdditionalUsingDirectories>
+      <AdditionalIncludeDirectories>C:\Users\dgladkov\Documents\Education\database\INCLUDE;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,12 +151,24 @@
   <ItemGroup>
     <ClCompile Include="GenaraliztionFile.cpp" />
     <ClCompile Include="GeneralizationCurve.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="GeneralizationDataBase.cpp" />
+    <ClCompile Include="GeneralizationDataBaseLoadFuncs.cpp" />
+    <ClCompile Include="GeneralizationRequestCurve.cpp" />
+    <ClCompile Include="GeneralizationServer.cpp">
+      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</CompileAsManaged>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
     <ClInclude Include="GeneralizationCurve.h" />
+    <ClInclude Include="GeneralizationDataBase.h" />
+    <ClInclude Include="GeneralizationDataBaseLoadFuncs.h" />
     <ClInclude Include="GeneralizationFile.h" />
+    <ClInclude Include="GeneralizationRequestCurve.h" />
+    <ClInclude Include="GeneralizationServer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
