@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-class GenaraliztionFile
+class GeneralizationFile
 {
 private:
 	std::string path;
@@ -15,14 +15,14 @@ private:
 
 	void BuildCurvesMap();
 public:
-	GenaraliztionFile();
+	GeneralizationFile();
 	uint32_t GetNumberOfCurves();
 	curves GetCurves();
 	curveCoord GetCurveCoordPointsX(uint32_t curve);
 	curveCoord GetCurveCoordPointsY(uint32_t curve);
 	uint32_t GetCurveNumberPoints(uint32_t curve);
 	void SetPath(std::string string_path);
-	void ParseAllDataInFile();
-	virtual ~GenaraliztionFile();
+	int ParseAllDataInFile();
+	virtual ~GeneralizationFile();
 };
 

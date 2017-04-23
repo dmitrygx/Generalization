@@ -8,9 +8,13 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/compare.hpp>
+#include <functional>
 
 #include "GeneralizationRequestCurve.h"
 #include "GeneralizationFile.h"
+#include "GeneralizationDataBase.h"
 
 using namespace utility;                    // Common utilities like string conversions
 using namespace web;                        // Common features like URIs.
@@ -29,10 +33,11 @@ protected:
 
 	typedef enum Objects
 	{
-		UNDEFINED = -1,
-		INITIALIZE = 0,
-		SOURCE_CURVE = 1,
-		ADDUCTION_CURVE = 2,
+		UNDEFINED		= -1,
+		INITIALIZE		= 0,
+		SOURCE_CURVE		= 1,
+		ADDUCTION_CURVE		= 2,
+		SEGMENTATION_CURVE	= 3
 	} Objects_t;
 
 	map <string_t, Objects_t> allowedPath;
@@ -48,14 +53,34 @@ protected:
 	Objects_t getObjectFromString(string_t &string, char_t nestingLevel);
 	size_t checkPath(vector<string_t> &splittedPath);
 
-	void InitializeCurves();
+	int InitializeCurves(string_t storage_type, string_t storage_path);
 
-	GenaraliztionFile GenFile;
+	GeneralizationFile GenFile;
+	GeneralizationDataBase GenDataBase;
 	curves CurvesMap;
 
 	GeneralizationRequestCurve *Curves;
+
+	boolean running;
 public:
 	GeneralizationServer(const http::uri& url);
+	DWORD start();
+	
 	virtual ~GeneralizationServer();
+
+	void ChageStateOfServerThread(boolean state)
+	{
+		running = state;
+	}
+
+	GeneralizationFile* GetGeneralizationFile()
+	{
+		return &GenFile;
+	}
+
+	GeneralizationDataBase* GetGeneralizationDataBase()
+	{
+		return &GenDataBase;
+	}
 };
 

@@ -23,9 +23,11 @@ GeneralizationServer::GeneralizationServer(const http::uri& url) : listener(http
 
 	allowedPath[static_cast<string_t>(U("initialize"))] = INITIALIZE;
 	allowedPath[static_cast<string_t>(U("source_curve"))] = SOURCE_CURVE;
+	allowedPath[static_cast<string_t>(U("adduction_curve"))] = ADDUCTION_CURVE;
+	allowedPath[static_cast<string_t>(U("segmentation_curve"))] = SEGMENTATION_CURVE;
 
-
-	try
+	running = true;
+	/*try
 	{
 		listener
 			.open()
@@ -40,8 +42,28 @@ GeneralizationServer::GeneralizationServer(const http::uri& url) : listener(http
 	catch (exception const & e)
 	{
 		cout << e.what() << endl;
+	}*/
+}
+
+DWORD GeneralizationServer::start()
+{
+	try
+	{
+		listener
+			.open()
+			.then([&]() {cout << "\nstarting to listen\n" << endl; })
+			.wait();
+
+		while (running)
+		{
+		}
+	}
+	catch (exception const & e)
+	{
+		cout << e.what() << endl;
 	}
 
+	return 0;
 }
 
 GeneralizationServer::Objects_t 
@@ -60,7 +82,7 @@ GeneralizationServer::getObjectFromString(string_t &string, char_t nestingLevel)
 size_t GeneralizationServer::checkPath(vector<string_t> &splittedPath)
 {
 	if (0 != strcmp(utility::conversions::to_utf8string(splittedPath[0]).c_str(), 
-		"generalization_server"))
+			"generalization_server"))
 	{
 		wcout << "Received unknown request: " << splittedPath[0] << endl;
 		return -1;
@@ -69,17 +91,82 @@ size_t GeneralizationServer::checkPath(vector<string_t> &splittedPath)
 	return 0;
 }
 
-void GeneralizationServer::InitializeCurves()
+string* UpdateFilePath(string fileName)
 {
-	GenFile.ParseAllDataInFile();
-	CurvesMap = GenFile.GetCurves();
+	typedef vector< string > split_vector_type;
 
-	Curves = new GeneralizationRequestCurve[GenFile.GetNumberOfCurves()];
+	split_vector_type SplitVec1;
+	string output;
+	boost::replace_all(fileName, "%3A", ":");
+	boost::replace_all(fileName, "%5C", "\\");
 
-	for (uint32_t i = 0; i < GenFile.GetNumberOfCurves(); i++)
+	string *finalfileName = new string;
+	*finalfileName = fileName;
+	///*boost::split(SplitVec1, fileName, boost::is_any_of("%3A"), boost::token_compress_on);*/
+	//string preFinalfileName;
+	//for (string part : SplitVec1)
+	//{
+	//	preFinalfileName += part;
+	//}
+
+	//split_vector_type SplitVec2;
+	//boost::split(SplitVec2, preFinalfileName, boost::is_any_of("%5C"), boost::token_compress_on);
+	//string *finalfileName = new string;
+	//for (string part : SplitVec2)
+	//{
+	//	*finalfileName += part;
+	//}
+
+	return finalfileName;
+}
+
+int GeneralizationServer::InitializeCurves(string_t storage_type, string_t storage_path)
+{
+	int res = -1;
+
+	if (storage_type == U("File"))
 	{
-		Curves[i].SetCurve(X(CurvesMap[i]).size(), &CurvesMap[i]);
+		res = GenFile.ParseAllDataInFile();
+		if (res != 0)
+			return res;
+		CurvesMap = GenFile.GetCurves();
+
+		Curves = new GeneralizationRequestCurve[GenFile.GetNumberOfCurves()];
+
+		for (uint32_t i = 0; i < GenFile.GetNumberOfCurves(); i++)
+		{
+			Curves[i].SetCurve(X(CurvesMap[i]).size(), &CurvesMap[i]);
+		}
+
+		res = 0;
 	}
+	else if (storage_type == U("DataBase"))
+	{
+		std::string fileName = utility::conversions::to_utf8string(storage_path);
+		std::string *resultFileName = UpdateFilePath(fileName);
+
+		GenDataBase.setFileName(*resultFileName);
+
+		cout << "Result filename is " << *resultFileName << endl;
+
+		delete resultFileName;
+
+		res = GenDataBase.ParseAllDataInDB();
+		if (res != 0)
+			return res;
+		CurvesMap = GenDataBase.GetCurves();
+
+		Curves = new GeneralizationRequestCurve[GenDataBase.GetNumberOfCurves()];
+
+		for (uint32_t i = 0; i < GenDataBase.GetNumberOfCurves(); i++)
+		{
+			Curves[i].SetCurve(X(CurvesMap[i]).size(), &CurvesMap[i]);
+		}
+
+		res = 0;
+	}
+
+	return res;
 }
 
 void GeneralizationServer::handle_request(http_request request,
@@ -123,11 +210,38 @@ void GeneralizationServer::handle_request(http_request request,
 	/* TODO: move to @handle_get func */
 	if ((reqObj == INITIALIZE) && (!initialized))
 	{
-		InitializeCurves();
+		auto found_storage_type = http_get_vars.find(U("type"));
+		auto found_storage_path = http_get_vars.find(U("path"));
+
+		if ((found_storage_type == end(http_get_vars)) ||
+		    (found_storage_path == end(http_get_vars))) {
+			auto err = U("Request received with get var \"type\" "
+				     "or \"path\" omitted from query.");
+			wcout << err << endl;
+			/* BAD */
+			request.reply(status_codes::BadRequest);
+			return;
+		}
+
+		auto storage_type = found_storage_type->second;
+		auto storage_path = found_storage_path->second;
+		wcout << U("Received storage: ") << storage_type << endl;
+		InitializeCurves(storage_type, storage_path);
 
 		auto array = answer.array();
 		json::value root;
-		for (size_t i = 0; i < GenFile.GetNumberOfCurves(); i++)
+		size_t numOfCurves = 0;
+
+		if (storage_type == U("File"))
+		{
+			numOfCurves = GenFile.GetNumberOfCurves();
+		}
+		else if (storage_type == U("DataBase"))
+		{
+			numOfCurves = GenDataBase.GetNumberOfCurves();
+		}
+
+		for (size_t i = 0; i < numOfCurves; i++)
 		{
 			web::json::value obj;
 
@@ -146,7 +260,7 @@ void GeneralizationServer::handle_request(http_request request,
 		auto found_curve = http_get_vars.find(U("curve_number"));
 
 		if (found_curve == end(http_get_vars)) {
-			auto err = U("Request received with get var \"request\" omitted from query.");
+			auto err = U("Request received with get var \"curve_number\" omitted from query.");
 			wcout << err << endl;
 			/* BAD */
 			request.reply(status_codes::BadRequest);
@@ -154,8 +268,11 @@ void GeneralizationServer::handle_request(http_request request,
 		}
 
 		auto request_curve = found_curve->second;
-		wcout << U("Received request: ") << request_curve << endl;
-		uint32_t requested_curve_number = atoi((char*)request_curve.c_str());
+		wcout << U("Received request SOURCE_CURVE: ") << request_curve << endl;
+		
+		uint32_t requested_curve_number = std::stoi(request_curve);
+
+
 		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
 		uint32_t size = X(CurvesMap[requested_curve_number]).size();
 		curve *reqCurve = &CurvesMap[requested_curve_number];
@@ -181,6 +298,102 @@ void GeneralizationServer::handle_request(http_request request,
 			array[i] = pointXY;
 		}
 		root[L"points"] = array;
+		cout << "We are ready to reply" << endl;
+		request.reply(status_codes::OK, root);
+		return;
+	}
+	else if ((reqObj == ADDUCTION_CURVE) && (initialized))
+	{
+		auto found_curve = http_get_vars.find(U("curve_number"));
+
+		if (found_curve == end(http_get_vars)) {
+			auto err = U("Request received with get var \"curve_number\" omitted from query.");
+			wcout << err << endl;
+			/* BAD */
+			request.reply(status_codes::BadRequest);
+			return;
+		}
+
+		auto request_curve = found_curve->second;
+		wcout << U("Received request ADDUCTION_CURVE: ") << request_curve << endl;
+		uint32_t requested_curve_number = atoi((char*)request_curve.c_str());
+		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
+		requested_curve->DispatchEvent(Event_t::ADDUCTION);
+
+		auto array = answer.array();
+		json::value root;
+
+		uint32_t countOfAdductedPoints;
+		curve *adducted_curve = requested_curve->GetAdductedCurve(countOfAdductedPoints);
+		root[L"count_points"] = countOfAdductedPoints;
+		for (size_t i = 0; i < countOfAdductedPoints; i++)
+		{
+			web::json::value x;
+			web::json::value y;
+
+			x = web::json::value::number(X(*adducted_curve)[i]);
+			y = web::json::value::number(Y(*adducted_curve)[i]);
+
+			web::json::value pointXY;
+			pointXY[L"X"] = x;
+			pointXY[L"Y"] = y;
+
+			array[i] = pointXY;
+		}
+		root[L"points"] = array;
+		cout << "We are ready to reply" << endl;
+		request.reply(status_codes::OK, root);
+		return;
+	}
+	else if ((reqObj == SEGMENTATION_CURVE) && (initialized))
+	{
+		auto found_curve = http_get_vars.find(U("curve_number"));
+
+		if (found_curve == end(http_get_vars)) {
+			auto err = U("Request received with get var \"curve_number\" omitted from query.");
+			wcout << err << endl;
+			/* BAD */
+			request.reply(status_codes::BadRequest);
+			return;
+		}
+
+		auto request_curve = found_curve->second;
+		wcout << U("Received request SEGMENTATION_CURVE: ") << request_curve << endl;
+		uint32_t requested_curve_number = atoi((char*)request_curve.c_str());
+		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
+		requested_curve->DispatchEvent(Event_t::SEGMENTATION);
+
+		auto array_segments = answer.array();
+		json::value root;
+
+		uint32_t countOfSegm;
+		std::vector<uint32_t> *countOfPointsInSegm = NULL;
+		std::vector<curve> *segmented_curve = requested_curve->GetSegmentedCurve(countOfSegm,
+											 &countOfPointsInSegm);
+		root[L"count_segments"] = countOfSegm;
+		for (size_t i = 0; i < countOfSegm; i++)
+		{
+			web::json::value segmObj;
+			segmObj[L"count_points"] = (*countOfPointsInSegm)[i]; 
+			auto array = segmObj.array();
+			for (size_t j = 0; j < (*countOfPointsInSegm)[i]; j++)
+			{
+				web::json::value x;
+				web::json::value y;
+
+				x = web::json::value::number(X((*segmented_curve)[i])[j]);
+				y = web::json::value::number(Y((*segmented_curve)[i])[j]);
+
+				web::json::value pointXY;
+				pointXY[L"X"] = x;
+				pointXY[L"Y"] = y;
+
+				array[j] = pointXY;
+			}
+			segmObj[L"segment"] = array;
+			array_segments[i] = segmObj;
+		}
+		root[L"segments"] = array_segments;
 		cout << "We are ready to reply" << endl;
 		request.reply(status_codes::OK, root);
 		return;

@@ -2,49 +2,49 @@
 #include <cassert>
 #include <iostream>
 
-GenaraliztionFile::GenaraliztionFile()
+GeneralizationFile::GeneralizationFile()
 {
 	path = "C:\\Users\\dgladkov\\Documents\\Education\\CourseWork\\coursework_big.txt";
 	pathRes = "C:\\Users\\dgladkov\\Documents\\Education\\CourseWork\\coursework_big.txt";
 }
 
-void GenaraliztionFile::SetPath(std::string string_path)
+void GeneralizationFile::SetPath(std::string string_path)
 {
 	path = string_path;
 }
 
-uint32_t GenaraliztionFile::GetNumberOfCurves()
+uint32_t GeneralizationFile::GetNumberOfCurves()
 {
 	return numOfCurves;
 }
 
-curves GenaraliztionFile::GetCurves()
+curves GeneralizationFile::GetCurves()
 {
 	return Curves;
 }
 
-curveCoord GenaraliztionFile::GetCurveCoordPointsX(uint32_t curve)
+curveCoord GeneralizationFile::GetCurveCoordPointsX(uint32_t curve)
 {
 	assert(curve < numOfCurves);
 
 	return curvesX[curve];
 }
 
-curveCoord GenaraliztionFile::GetCurveCoordPointsY(uint32_t curve)
+curveCoord GeneralizationFile::GetCurveCoordPointsY(uint32_t curve)
 {
 	assert(curve < numOfCurves);
 
 	return curvesY[curve];
 }
 
-uint32_t GenaraliztionFile::GetCurveNumberPoints(uint32_t curve)
+uint32_t GeneralizationFile::GetCurveNumberPoints(uint32_t curve)
 {
 	assert(curve < numOfCurves);
 
 	return pointInCurves[curve];
 }
 
-void GenaraliztionFile::ParseAllDataInFile()
+int GeneralizationFile::ParseAllDataInFile()
 {
 	char separator = ' ';
 
@@ -112,9 +112,11 @@ void GenaraliztionFile::ParseAllDataInFile()
 	}
 
 	BuildCurvesMap();
+
+	return 0;
 }
 
-void GenaraliztionFile::BuildCurvesMap()
+void GeneralizationFile::BuildCurvesMap()
 {
 	for (uint32_t i = 0; i < numOfCurves; i++)
 	{
@@ -124,6 +126,6 @@ void GenaraliztionFile::BuildCurvesMap()
 }
 
 
-GenaraliztionFile::~GenaraliztionFile()
+GeneralizationFile::~GeneralizationFile()
 {
 }

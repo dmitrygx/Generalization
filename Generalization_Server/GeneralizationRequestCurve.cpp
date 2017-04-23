@@ -10,6 +10,20 @@ GeneralizationRequestCurve::GeneralizationRequestCurve()
 {
 	state = State_t::UNITIALIZED;
 
+	Initialize();
+}
+
+GeneralizationRequestCurve::GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve)
+{
+	state = State_t::UNITIALIZED;
+	Curve = newCurve;
+	countOfPoints = newCountOfPoints;
+
+	Initialize();
+}
+
+void GeneralizationRequestCurve::Initialize()
+{
 	pair<State_t, Event_t> pair_Unit_Init = make_pair(UNITIALIZED, INITIALIZE);
 	addMemberFunction(
 		pair_Unit_Init,
@@ -20,27 +34,39 @@ GeneralizationRequestCurve::GeneralizationRequestCurve()
 			return;
 		}
 		this->BuildCurve(countOfPoints, Curve);
+
+		state = State_t::INITIALIZED;
 	}
 	);
-}
 
-GeneralizationRequestCurve::GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve)
-{
-	state = State_t::UNITIALIZED;
-	Curve = newCurve;
-	countOfPoints = newCountOfPoints;
-
-	pair<State_t, Event_t> pair_Unit_Init = make_pair(UNITIALIZED, INITIALIZE);
+	pair<State_t, Event_t> pair_Init_Adduct = make_pair(INITIALIZED, ADDUCTION);
 	addMemberFunction(
-		pair_Unit_Init,
+		pair_Init_Adduct,
 		[&] {
-			if (!Curve || countOfPoints == 0)
-			{
-				std::cout << "Error: Count of points = " << countOfPoints << endl;
-				return;
-			}
-			this->BuildCurve(countOfPoints, Curve);
+		if (!Curve || countOfPoints == 0)
+		{
+			std::cout << "Error: Count of points = " << countOfPoints << endl;
+			return;
 		}
+		this->Adduction();
+
+		state = State_t::ADDUCTED;
+	}
+	);
+
+	pair<State_t, Event_t> pair_Adduct_Segm = make_pair(ADDUCTED, SEGMENTATION);
+	addMemberFunction(
+		pair_Adduct_Segm,
+		[&] {
+		if (!Curve || countOfPoints == 0)
+		{
+			std::cout << "Error: Count of points = " << countOfPoints << endl;
+			return;
+		}
+		this->Segmentation();
+
+		state = State_t::SEGMENTED;
+	}
 	);
 }
 

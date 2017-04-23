@@ -11,13 +11,17 @@ using namespace std;
 
 typedef enum State
 {
-	UNITIALIZED = -1,
-	INITIALIZED = 0,
+	UNITIALIZED	= -1,
+	INITIALIZED	= 0,
+	ADDUCTED	= 1,
+	SEGMENTED	= 2
 } State_t;
 
 typedef enum Event
 {
-	INITIALIZE = 0,
+	INITIALIZE	= 0,
+	ADDUCTION	= 1,
+	SEGMENTATION	= 2
 } Event_t;
 
 class GeneralizationRequestCurve :
@@ -33,6 +37,7 @@ private:
 	map<pair<State_t, Event_t>, callBackFunction> matrix;
 
 	void addMemberFunction(pair<State_t, Event_t> forPair, callBackFunction methodName);
+	void Initialize();
 public:
 	GeneralizationRequestCurve();
 	GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve);

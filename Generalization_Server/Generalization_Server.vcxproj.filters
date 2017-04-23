@@ -45,9 +45,6 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files\main</Filter>
     </ClCompile>
-    <ClCompile Include="GenaraliztionFile.cpp">
-      <Filter>Source Files\file</Filter>
-    </ClCompile>
     <ClCompile Include="GeneralizationCurve.cpp">
       <Filter>Source Files\curve</Filter>
     </ClCompile>
@@ -56,6 +53,15 @@
     </ClCompile>
     <ClCompile Include="GeneralizationRequestCurve.cpp">
       <Filter>Source Files\server</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneraliztionFile.cpp">
+      <Filter>Source Files\file</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneralizationWorkerInvoke.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneralizationWorker.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="GeneralizationDataBase.cpp">
       <Filter>Source Files\database</Filter>
@@ -79,6 +85,15 @@
     </ClInclude>
     <ClInclude Include="GeneralizationRequestCurve.h">
       <Filter>Header Files\server</Filter>
+    </ClInclude>
+    <ClInclude Include="Thread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneralizationWorkerInvoke.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneralizationWorker.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GeneralizationDataBase.h">
       <Filter>Header Files\database</Filter>

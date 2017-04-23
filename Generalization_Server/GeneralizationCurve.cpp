@@ -49,6 +49,21 @@ curve* GeneralizationCurve::GetSouceCurve()
 {
 	return Points;
 }
+
+curve* GeneralizationCurve::GetAdductedCurve(uint32_t &count)
+{
+	count = AdductionCount;
+	return AdductionPoints;
+}
+
+std::vector<curve> *GeneralizationCurve::GetSegmentedCurve(uint32_t &countOfSegm,
+							   std::vector<uint32_t> **countOfPointInSegm)
+{
+	countOfSegm = ResultSegmentCount;
+	*countOfPointInSegm = &CountOfAdductionPointsInSegment;
+
+	return &AdductionPointsInSegment;
+}
 /* ~Getters */
 
 void GeneralizationCurve::BuildCurve(uint32_t countOfPoints, curve *newCurve)

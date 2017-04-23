@@ -76,6 +76,9 @@ public:
 
 	/* Getters */
 	curve* GetSouceCurve();
+	curve* GetAdductedCurve(uint32_t &count);
+	std::vector<curve> *GetSegmentedCurve(uint32_t &countOfSegm,
+					      std::vector<uint32_t> **countOfPointInSegm);
 	/* ~Getters */
 
 	void BuildCurve(uint32_t countOfPoints, curve *newCurve);

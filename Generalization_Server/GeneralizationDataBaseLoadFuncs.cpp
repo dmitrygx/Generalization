@@ -2,11 +2,11 @@
 
 using namespace std;
 
-#define LoadFunction(func, type)							\
-	func = (type)GetProcAddress(hinstLib, "_BaseOpen");				\
-	if (NULL != func)								\
+#define LoadFunction(func, type, typeStr)						\
+	func = (type)GetProcAddress(hinstLib, typeStr);					\
+	if (NULL == func)								\
 	{										\
-		cout << "Error occured during loading \'" << func << "\'. Error is "	\
+		cout << "Error occured during loading \'" << typeStr << "\'. Error is "	\
 		     << GetLastError() << endl;						\
 		return;									\
 	}
@@ -16,16 +16,22 @@ GeneralizationDataBaseLoadFuncs::GeneralizationDataBaseLoadFuncs()
 	hinstLib = LoadLibrary(TEXT("Gdbms01.dll"));
 	if (hinstLib != NULL)
 	{
-		LoadFunction(BaseOpen, _BaseOpen);
-		LoadFunction(BaseOpenTextError, _BaseOpenTextError);
-		LoadFunction(BaseClose, _BaseClose);
-		LoadFunction(BaseInitObject, _BaseInitObject);
-		LoadFunction(BaseInitQuery, _BaseInitQuery);
-		LoadFunction(BaseReadObject, _BaseReadObject);
-		LoadFunction(BaseObjectCount, _BaseObjectCount);
-		LoadFunction(BaseCodeStr, _BaseCodeStr);
+		LoadFunction(_BaseOpen, BaseOpen, "BaseOpen");
+		LoadFunction(_BaseOpenTextError, BaseOpenTextError, "BaseOpenTextError");
+		LoadFunction(_BaseCloseObject, BaseCloseObject, "BaseCloseObject");
+		LoadFunction(_BaseClose, BaseClose, "BaseClose");
+		LoadFunction(_BaseInitObject, BaseInitObject, "BaseInitObject");
+		LoadFunction(_BaseInitQuery, BaseInitQuery, "BaseInitQuery");
+		LoadFunction(_BaseReadObject, BaseReadObject, "BaseReadObject");
+		LoadFunction(_BaseObjectCount, BaseObjectCount, "BaseObjectCount");
+		LoadFunction(_BaseCodeStr, BaseCodeStr, "BaseCodeStr");
+		/*LoadFunction(BasePrintObjectToFile, _BasePrintObjectToFile, "BasePrintObjectToFile");*/
 
 		cout << "All functions are loaded" << endl;
+	}
+	else
+	{
+		cout << "An error occured during opening DLL file" << endl;
 	}
 }
 
