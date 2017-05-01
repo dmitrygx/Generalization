@@ -31,6 +31,9 @@ private:
 	using callBackFunction = std::function<void()>;
 	uint32_t countOfPoints;
 	curve *Curve;
+	
+	string Code;
+	long Number;
 
 	State_t state;
 	Event_t event;
@@ -41,7 +44,10 @@ private:
 public:
 	GeneralizationRequestCurve();
 	GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve);
-	void GeneralizationRequestCurve::SetCurve(uint32_t newCountOfPoints, curve *newCurve);
+	void SetCurve(uint32_t newCountOfPoints, curve *newCurve);
+	void SetDBInfo(string dbCode, long dbNumber);
+	string GetDBCode();
+	long GetDBNumber();
 	size_t DispatchEvent(Event_t newEvent);
 	virtual ~GeneralizationRequestCurve();
 };

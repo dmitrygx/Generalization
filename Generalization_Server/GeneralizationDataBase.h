@@ -11,6 +11,11 @@ private:
 	std::string FileName;
 	uint32_t numOfCurves = 0;
 	std::vector<uint32_t> pointInCurves;
+	typedef struct CurveId {
+		BASE_INT codes[10];
+		long Number;
+	} CurveId;
+	std::vector<CurveId> curvesId;
 	curvesCoord curvesX;
 	curvesCoord curvesY;
 	curves Curves;
@@ -65,8 +70,36 @@ public:
 	{
 		return dbObject;
 	}
-	virtual ~GeneralizationDataBase();
 
+	std::string GeneralizationDataBase::DBIntCodeToString(BASE_INT nativeCode[10])
+	{
+		std::string result;
+		uint32_t i = 0;
+
+		result += std::to_string(nativeCode[i]);
+		i++;
+
+		while ((i < 10) && (nativeCode[i] != 0))
+		{
+			result += ".";
+			result += std::to_string(nativeCode[i]);
+			i++;
+		}
+
+		return result;
+	}
+
+	std::string GeneralizationDataBase::GetDBCode(uint32_t curveNum)
+	{
+		return DBIntCodeToString(curvesId[curveNum].codes);
+	}
+
+	long GeneralizationDataBase::GetDBNumber(uint32_t curveNum)
+	{
+		return curvesId[curveNum].Number;
+	}
+
+	virtual ~GeneralizationDataBase();
 
 	int OpenDataBase(void);
 	int CloseDataBase(void);

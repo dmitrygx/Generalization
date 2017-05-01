@@ -161,6 +161,7 @@ int GeneralizationServer::InitializeCurves(string_t storage_type, string_t stora
 		for (uint32_t i = 0; i < GenDataBase.GetNumberOfCurves(); i++)
 		{
 			Curves[i].SetCurve(X(CurvesMap[i]).size(), &CurvesMap[i]);
+			Curves[i].SetDBInfo(GenDataBase.GetDBCode(i), GenDataBase.GetDBNumber(i));
 		}
 
 		res = 0;
@@ -244,8 +245,11 @@ void GeneralizationServer::handle_request(http_request request,
 		for (size_t i = 0; i < numOfCurves; i++)
 		{
 			web::json::value obj;
-
+			GeneralizationRequestCurve *requested_curve = &Curves[i];
 			obj[L"count_points"] = web::json::value::number(X(CurvesMap[i]).size());
+			string_t str = utility::conversions::to_utf16string(requested_curve->GetDBCode());
+			obj[L"code"] = web::json::value::value(str);
+			obj[L"number"] = web::json::value::value(requested_curve->GetDBNumber());
 
 			array[i] = obj;
 		}

@@ -125,6 +125,9 @@ int GeneralizationDataBase::GetDataBaseObjects(long Count, SimpleCurve *Objects,
 		Objects[objIter].count = Object.qMet;
 		Objects[objIter].Xpoints = new BASE_INT[Object.qMet];
 		Objects[objIter].Ypoints = new BASE_INT[Object.qMet];
+		memcpy(Objects[objIter].CurveCode.Code, Object.Code,
+		       sizeof(BASE_INT) * 10);
+		Objects[objIter].CurveCode.Number = Object.Number;
 		long Xiter = 0;
 		long Yiter = 0;
 		for (long iter = 0; iter < Object.qMet * 4; iter++)
@@ -151,6 +154,9 @@ int GeneralizationDataBase::GetDataBaseObjects(long Count, SimpleCurve *Objects,
 			Objects[objIter].count = Object.qMet;
 			Objects[objIter].Xpoints = new BASE_INT[Object.qMet];
 			Objects[objIter].Ypoints = new BASE_INT[Object.qMet];
+			memcpy(Objects[objIter].CurveCode.Code, Object.Code,
+				sizeof(BASE_INT) * 10);
+			Objects[objIter].CurveCode.Number = Object.Number;
 			long Xiter = 0;
 			long Yiter = 0;
 			for (long iter = 0; iter < Object.qMet * 4; iter++)
@@ -406,21 +412,25 @@ int GeneralizationDataBase::ParseAllDataInDB()
 		}
 		return -1;
 	}
-	cout << "Congratulations: We read " << ObjCount << " objects, but original count is " << count << endl;
+	cout << "We read " << ObjCount << " objects, and original count is " << count << endl;
 
 	pointInCurves.resize(ObjCount);
 
 	curvesX.resize(ObjCount);
 	curvesY.resize(ObjCount);
+	curvesId.resize(ObjCount);
 	for (long i = 0; i < ObjCount; i++)
 	{
+		memcpy(curvesId[i].codes, Objects[i].CurveCode.Code,
+		       sizeof(*curvesId[i].codes) * 10);
+		curvesId[i].Number = Objects[i].CurveCode.Number;
 		pointInCurves[i] = Objects[i].count;
 		curvesX[i].resize(pointInCurves[i]);
 		curvesY[i].resize(pointInCurves[i]);
 		for (size_t iter = 0; iter < pointInCurves[i]; iter++)
 		{
 			curvesX[i][iter] = Objects[i].Xpoints[iter];
-			curvesX[i][iter] = Objects[i].Ypoints[iter];
+			curvesY[i][iter] = Objects[i].Ypoints[iter];
 		}
 	}
 

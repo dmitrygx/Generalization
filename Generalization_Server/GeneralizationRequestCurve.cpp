@@ -76,6 +76,22 @@ void GeneralizationRequestCurve::SetCurve(uint32_t newCountOfPoints, curve *newC
 	countOfPoints = newCountOfPoints;
 }
 
+void GeneralizationRequestCurve::SetDBInfo(string dbCode, long dbNumber)
+{
+	Code = dbCode;
+	Number = dbNumber;
+}
+
+string GeneralizationRequestCurve::GetDBCode()
+{
+	return Code;
+}
+
+long GeneralizationRequestCurve::GetDBNumber()
+{
+	return Number;
+}
+
 size_t GeneralizationRequestCurve::DispatchEvent(Event_t newEvent)
 {
 	pair<State_t, Event_t> reqPair = make_pair(state, newEvent);
