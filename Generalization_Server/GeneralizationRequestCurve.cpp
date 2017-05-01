@@ -13,7 +13,29 @@ GeneralizationRequestCurve::GeneralizationRequestCurve()
 	Initialize();
 }
 
+GeneralizationRequestCurve::GeneralizationRequestCurve(
+	double_t C_, uint32_t Np_, uint32_t Ns_,
+	double_t f_, uint32_t Ninit_) :
+	GeneralizationCurve(C_, Np_, Ns_, f_, Ninit_)
+{
+	state = State_t::UNITIALIZED;
+
+	Initialize();
+}
+
 GeneralizationRequestCurve::GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve)
+{
+	state = State_t::UNITIALIZED;
+	Curve = newCurve;
+	countOfPoints = newCountOfPoints;
+
+	Initialize();
+}
+
+GeneralizationRequestCurve::GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve,
+	double_t C_, uint32_t Np_, uint32_t Ns_,
+	double_t f_, uint32_t Ninit_) :
+	GeneralizationCurve(C_, Np_, Ns_, f_, Ninit_)
 {
 	state = State_t::UNITIALIZED;
 	Curve = newCurve;
@@ -66,6 +88,21 @@ void GeneralizationRequestCurve::Initialize()
 		this->Segmentation();
 
 		state = State_t::SEGMENTED;
+	}
+	);
+
+	pair<State_t, Event_t> pair_Segm_Simpl = make_pair(SEGMENTED, SIMPLIFICATION);
+	addMemberFunction(
+		pair_Segm_Simpl,
+		[&] {
+		if (!Curve || countOfPoints == 0)
+		{
+			std::cout << "Error: Count of points = " << countOfPoints << endl;
+			return;
+		}
+		this->Simplification();
+
+		state = State_t::SIMPLIFIED;
 	}
 	);
 }

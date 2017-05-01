@@ -64,6 +64,15 @@ std::vector<curve> *GeneralizationCurve::GetSegmentedCurve(uint32_t &countOfSegm
 
 	return &AdductionPointsInSegment;
 }
+
+curve** GeneralizationCurve::GetSimplifiedCurve(uint32_t &countOfSimplSegm,
+						std::vector<uint32_t> **countOfPointInSimplSegm)
+{
+	countOfSimplSegm = ResultSegmentCount;
+	*countOfPointInSimplSegm = &CountOfPointsAfterSimplification;
+
+	return PointsAfterSimplification;
+}
 /* ~Getters */
 
 void GeneralizationCurve::BuildCurve(uint32_t countOfPoints, curve *newCurve)
@@ -446,8 +455,8 @@ void GeneralizationCurve::Segmentation()
 	AdductionPointsInSegment.resize(CountOfSegments);
 	for (uint32_t i = 0; i < CountOfSegments; i++)
 	{
-		X(AdductionPointsInSegment[i]).resize(CountPoints);
-		Y(AdductionPointsInSegment[i]).resize(CountPoints);
+		X(AdductionPointsInSegment[i]).resize(AdductionCount);
+		Y(AdductionPointsInSegment[i]).resize(AdductionCount);
 	}
 
 	CountOfAdductionPointsInSegment.resize(CountOfSegments);
@@ -807,7 +816,7 @@ void GeneralizationCurve::Simplification()
 		{
 			NE[i].push_back(ComputeQuadrics(i, Radius * (j + 1)));
 
-			Dbc[i] .push_back(System::Math::Log10(NE[i][j]) / System::Math::Log10(1 / (Radius * (j + 1))));
+			Dbc[i].push_back(System::Math::Log10(NE[i][j]) / System::Math::Log10(1 / (Radius * (j + 1))));
 		}
 	}
 

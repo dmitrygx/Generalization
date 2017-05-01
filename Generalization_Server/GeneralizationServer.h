@@ -25,6 +25,15 @@ using namespace web::http::experimental::listener;          // HTTP server
 using namespace web::json;                                  // JSON library
 using namespace std;
 
+struct AlgorithmParams
+{
+	double C;
+	uint32_t Np;
+	uint32_t Ns;
+	double f;
+	uint32_t Ninit;
+};
+
 class GeneralizationServer
 {
 protected:
@@ -37,7 +46,8 @@ protected:
 		INITIALIZE		= 0,
 		SOURCE_CURVE		= 1,
 		ADDUCTION_CURVE		= 2,
-		SEGMENTATION_CURVE	= 3
+		SEGMENTATION_CURVE	= 3,
+		SIMPLIFICATION_CURVE	= 4
 	} Objects_t;
 
 	map <string_t, Objects_t> allowedPath;
@@ -53,7 +63,8 @@ protected:
 	Objects_t getObjectFromString(string_t &string, char_t nestingLevel);
 	size_t checkPath(vector<string_t> &splittedPath);
 
-	int InitializeCurves(string_t storage_type, string_t storage_path);
+	int InitializeCurves(string_t storage_type, string_t storage_path,
+		AlgorithmParams *algParams);
 
 	GeneralizationFile GenFile;
 	GeneralizationDataBase GenDataBase;
@@ -82,5 +93,7 @@ public:
 	{
 		return &GenDataBase;
 	}
+	void AllocateMemCurves(size_t Count, double_t C_, uint32_t Np_,
+		uint32_t Ns_, double_t f_, uint32_t Ninit_);
 };
 
