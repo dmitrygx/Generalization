@@ -47,7 +47,8 @@ protected:
 		SOURCE_CURVE		= 1,
 		ADDUCTION_CURVE		= 2,
 		SEGMENTATION_CURVE	= 3,
-		SIMPLIFICATION_CURVE	= 4
+		SIMPLIFICATION_CURVE	= 4,
+		SMOOTHING_CURVE		= 5
 	} Objects_t;
 
 	map <string_t, Objects_t> allowedPath;

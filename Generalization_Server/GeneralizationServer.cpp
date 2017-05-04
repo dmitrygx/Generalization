@@ -28,6 +28,7 @@ GeneralizationServer::GeneralizationServer(const http::uri& url) : listener(http
 	allowedPath[static_cast<string_t>(U("adduction_curve"))] = ADDUCTION_CURVE;
 	allowedPath[static_cast<string_t>(U("segmentation_curve"))] = SEGMENTATION_CURVE;
 	allowedPath[static_cast<string_t>(U("simplification_curve"))] = SIMPLIFICATION_CURVE;
+	allowedPath[static_cast<string_t>(U("smoothing_curve"))] = SMOOTHING_CURVE;
 
 	running = true;
 	/*try
@@ -528,6 +529,59 @@ void GeneralizationServer::handle_request(http_request request,
 			segmObj[L"count_points"] = (*countOfPointsInSimplSegm)[i];
 			auto array = segmObj.array();
 			for (size_t j = 0; j < (*countOfPointsInSimplSegm)[i]; j++)
+			{
+				web::json::value x;
+				web::json::value y;
+
+				x = web::json::value::number(X((*segmented_curve)[i])[j]);
+				y = web::json::value::number(Y((*segmented_curve)[i])[j]);
+
+				web::json::value pointXY;
+				pointXY[L"X"] = x;
+				pointXY[L"Y"] = y;
+
+				array[j] = pointXY;
+			}
+			segmObj[L"segment"] = array;
+			array_segments[i] = segmObj;
+		}
+		root[L"segments"] = array_segments;
+		cout << "We are ready to reply" << endl;
+		request.reply(status_codes::OK, root);
+		return;
+	}
+	else if ((reqObj == SMOOTHING_CURVE) && (initialized))
+	{
+		auto found_curve = http_get_vars.find(U("curve_number"));
+
+		if (found_curve == end(http_get_vars)) {
+			auto err = U("Request received with get var \"curve_number\" omitted from query.");
+			wcout << err << endl;
+			/* BAD */
+			request.reply(status_codes::BadRequest);
+			return;
+		}
+
+		auto request_curve = found_curve->second;
+		wcout << U("Received request SMOOTHING_CURVE: ") << request_curve << endl;
+		uint32_t requested_curve_number = atoi((char*)request_curve.c_str());
+		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
+		requested_curve->DispatchEvent(Event_t::SMOOTHING);
+
+		auto array_segments = answer.array();
+		json::value root;
+
+		uint32_t countOfSmoothSegm;
+		std::vector<uint32_t> *countOfPointsInSmoothSegm = NULL;
+		curve** segmented_curve = requested_curve->GetSimplifiedCurve(countOfSmoothSegm,
+			&countOfPointsInSmoothSegm);
+		root[L"count_segments"] = countOfSmoothSegm;
+		for (size_t i = 0; i < countOfSmoothSegm; i++)
+		{
+			web::json::value segmObj;
+			segmObj[L"count_points"] = (*countOfPointsInSmoothSegm)[i];
+			auto array = segmObj.array();
+			for (size_t j = 0; j < (*countOfPointsInSmoothSegm)[i]; j++)
 			{
 				web::json::value x;
 				web::json::value y;

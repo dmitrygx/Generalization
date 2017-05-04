@@ -73,6 +73,15 @@ curve** GeneralizationCurve::GetSimplifiedCurve(uint32_t &countOfSimplSegm,
 
 	return PointsAfterSimplification;
 }
+
+curve** GeneralizationCurve::GetSmoothedCurve(uint32_t &countOfSmoothSegm,
+					      std::vector<uint32_t> **countOfPointInSmoothSegm)
+{
+	countOfSmoothSegm = ResultSegmentCount;
+	*countOfPointInSmoothSegm = &CountOfPointsAfterSmoothing;
+
+	return PointsAfterSmoothing;
+}
 /* ~Getters */
 
 void GeneralizationCurve::BuildCurve(uint32_t countOfPoints, curve *newCurve)

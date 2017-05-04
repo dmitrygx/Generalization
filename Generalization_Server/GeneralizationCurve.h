@@ -81,6 +81,8 @@ public:
 					      std::vector<uint32_t> **countOfPointInSegm);
 	curve**GetSimplifiedCurve(uint32_t &countOfSimplSegm,
 				  std::vector<uint32_t> **countOfPointInSimplSegm);
+	curve** GetSmoothedCurve(uint32_t &countOfSmoothSegm,
+				 std::vector<uint32_t> **countOfPointInSmoothSegm);
 	/* ~Getters */
 
 	void BuildCurve(uint32_t countOfPoints, curve *newCurve);

@@ -105,6 +105,21 @@ void GeneralizationRequestCurve::Initialize()
 		state = State_t::SIMPLIFIED;
 	}
 	);
+
+	pair<State_t, Event_t> pair_Simpl_Smooth = make_pair(SIMPLIFIED, SMOOTHING);
+	addMemberFunction(
+		pair_Simpl_Smooth,
+		[&] {
+		if (!Curve || countOfPoints == 0)
+		{
+			std::cout << "Error: Count of points = " << countOfPoints << endl;
+			return;
+		}
+		this->Smoothing();
+
+		state = State_t::SMOOTHED;
+	}
+	);
 }
 
 void GeneralizationRequestCurve::SetCurve(uint32_t newCountOfPoints, curve *newCurve)
