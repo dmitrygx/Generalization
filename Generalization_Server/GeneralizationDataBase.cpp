@@ -28,7 +28,8 @@ const wchar_t *GeneralizationDataBase::GetWC(const char *c)
 {
 	const size_t cSize = strlen(c) + 1;
 	wchar_t* wc = new wchar_t[cSize];
-	mbstowcs(wc, c, cSize);
+	size_t retVal = 0;
+	mbstowcs_s(&retVal, wc, cSize, c, cSize);
 
 	return wc;
 }
@@ -37,7 +38,8 @@ const char *GeneralizationDataBase::GetC(const wchar_t *wc)
 {
 	const size_t cSize = wcslen(wc) + 1;
 	char* c = new char[cSize];
-	wcstombs(c, wc, cSize);
+	size_t retVal = 0;
+	wcstombs_s(&retVal, c, cSize, wc, cSize);
 
 	return c;
 }
