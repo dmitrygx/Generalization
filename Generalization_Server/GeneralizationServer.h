@@ -42,13 +42,13 @@ protected:
 
 	typedef enum Objects
 	{
-		UNDEFINED		= -1,
-		INITIALIZE		= 0,
-		SOURCE_CURVE		= 1,
-		ADDUCTION_CURVE		= 2,
-		SEGMENTATION_CURVE	= 3,
+		UNDEFINED				= -1,
+		INITIALIZE				= 0,
+		SOURCE_CURVE			= 1,
+		ADDUCTION_CURVE			= 2,
+		SEGMENTATION_CURVE		= 3,
 		SIMPLIFICATION_CURVE	= 4,
-		SMOOTHING_CURVE		= 5
+		SMOOTHING_CURVE			= 5
 	} Objects_t;
 
 	map <string_t, Objects_t> allowedPath;
@@ -75,6 +75,8 @@ protected:
 
 	boolean running;
 public:
+	GeneralizationServer(string Path, string Type,
+		double C, uint32_t Np, uint32_t Ns, double f, uint32_t Ninit);
 	GeneralizationServer(const http::uri& url);
 	DWORD start();
 	
@@ -96,5 +98,7 @@ public:
 	}
 	void AllocateMemCurves(size_t Count, double_t C_, uint32_t Np_,
 		uint32_t Ns_, double_t f_, uint32_t Ninit_);
+
+	void HandleAllCurves(string type);
 };
 

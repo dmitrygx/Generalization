@@ -1,5 +1,17 @@
 #include "GeneralizationRequestCurve.h"
+#include <ctime>
 
+#define StartTime(start)	\
+	(start) = std::clock();
+
+#define StopTime(start, duration)	\
+	(duration) = (std::clock() - (start)) / (double)CLOCKS_PER_SEC;
+
+#define VerboseTime(duration)				\
+if (GetVerbose())							\
+{											\
+	cout << (duration) << " sec" << endl;	\
+}
 
 void GeneralizationRequestCurve::addMemberFunction(pair<State_t, Event_t> forPair, callBackFunction methodName)
 {
@@ -70,7 +82,12 @@ void GeneralizationRequestCurve::Initialize()
 			std::cout << "Error: Count of points = " << countOfPoints << endl;
 			return;
 		}
+
+		std::clock_t start; double duration = 0;
+		StartTime(start);
 		this->Adduction();
+		StopTime(duration, start);
+		VerboseTime(duration);
 
 		state = State_t::ADDUCTED;
 	}

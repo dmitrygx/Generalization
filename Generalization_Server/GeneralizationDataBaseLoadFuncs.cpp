@@ -31,7 +31,7 @@ GeneralizationDataBaseLoadFuncs::GeneralizationDataBaseLoadFuncs()
 	}
 	else
 	{
-		cout << "An error occured during opening DLL file" << endl;
+		cout << "An error occured during opening DLL file, error - " << GetLastError() << endl;
 	}
 }
 

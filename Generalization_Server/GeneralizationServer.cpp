@@ -1,6 +1,20 @@
 #include "GeneralizationServer.h"
 #include "Wininet.h"
 
+GeneralizationServer::GeneralizationServer(string Path, string Type,
+	double C, uint32_t Np, uint32_t Ns, double f, uint32_t Ninit)
+{
+	AlgorithmParams algParams;
+	algParams.C = C;
+	algParams.Np = Np;
+	algParams.Ns = Ns;
+	algParams.f = f;
+	algParams.Ninit = Ninit;
+
+	InitializeCurves(utility::conversions::to_utf16string(Type),
+		utility::conversions::to_utf16string(Path), &algParams);
+}
+
 //http_listener(L"http://localhost/generalization_server"))
 GeneralizationServer::GeneralizationServer(const http::uri& url) : listener(http_listener(url))
 {
@@ -134,6 +148,35 @@ void GeneralizationServer::AllocateMemCurves(size_t Count, double_t C_, uint32_t
 	}
 }
 
+#define MethodInvoke(type, method)	\
+	(Gen##type .method)
+
+void GeneralizationServer::HandleAllCurves(string type)
+{
+	size_t curve_number = (type == "File") ?
+		MethodInvoke(File, GetNumberOfCurves()) :
+		MethodInvoke(DataBase, GetNumberOfCurves());
+	for (size_t i = 0; i < curve_number; i++)
+	{
+		GeneralizationRequestCurve *requested_curve = &Curves[i];
+		uint32_t size = X(CurvesMap[i]).size();
+		curve *reqCurve = &CurvesMap[i];
+		requested_curve->SetCurve(size, reqCurve);
+		if (size != 0)
+		{
+			requested_curve->DispatchEvent(Event_t::INITIALIZE);
+			cout << "Done" << endl;
+			requested_curve->DispatchEvent(Event_t::ADDUCTION);
+			cout << "Done" << endl;
+			requested_curve->DispatchEvent(Event_t::SEGMENTATION);
+			cout << "Done" << endl;
+			requested_curve->DispatchEvent(Event_t::SIMPLIFICATION);
+			cout << "Done" << endl;
+			requested_curve->DispatchEvent(Event_t::SMOOTHING);
+		}
+	}
+}
+
 int GeneralizationServer::InitializeCurves(string_t storage_type, string_t storage_path,
 	AlgorithmParams *algParams)
 {
@@ -187,29 +230,29 @@ int GeneralizationServer::InitializeCurves(string_t storage_type, string_t stora
 	return res;
 }
 
-std::wstring DecodeURL(const std::wstring &a_URL)
-{
-	DWORD size = 0;
-	if (!InternetCanonicalizeUrlW(a_URL.c_str(), NULL, &size, ICU_DECODE | ICU_NO_ENCODE))
-	{
-		if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
-		{
-			std::wstring buffer;
-			buffer.resize(size);
-			if (InternetCanonicalizeUrlW(a_URL.c_str(), (LPWSTR)(void *)buffer.c_str(),
-				&size, ICU_DECODE | ICU_NO_ENCODE))
-			{
-				std::wstring utf8;
-				utf8.resize(buffer.size());
-				for (size_t i = 1; i <= buffer.size(); ++i)
-					utf8[i] = (char)buffer[i];
-				return utf8;
-			}
-		}
-	}
-
-	return NULL;
-}
+//std::wstring DecodeURL(const std::wstring &a_URL)
+//{
+//	DWORD size = 0;
+//	if (!InternetCanonicalizeUrlW(a_URL.c_str(), NULL, &size, ICU_DECODE | ICU_NO_ENCODE))
+//	{
+//		if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+//		{
+//			std::wstring buffer;
+//			buffer.resize(size);
+//			if (InternetCanonicalizeUrlW(a_URL.c_str(), (LPWSTR)(void *)buffer.c_str(),
+//				&size, ICU_DECODE | ICU_NO_ENCODE))
+//			{
+//				std::wstring utf8;
+//				utf8.resize(buffer.size());
+//				for (size_t i = 1; i <= buffer.size(); ++i)
+//					utf8[i] = (char)buffer[i];
+//				return utf8;
+//			}
+//		}
+//	}
+//
+//	return NULL;
+//}
 
 void GeneralizationServer::handle_request(http_request request,
 	function<void(json::value &, json::value &)> action)
