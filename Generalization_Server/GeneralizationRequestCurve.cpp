@@ -1,17 +1,5 @@
 #include "GeneralizationRequestCurve.h"
-#include <ctime>
-
-#define StartTime(start)	\
-	(start) = std::clock();
-
-#define StopTime(start, duration)	\
-	(duration) = (std::clock() - (start)) / (double)CLOCKS_PER_SEC;
-
-#define VerboseTime(duration)				\
-if (GetVerbose())							\
-{											\
-	cout << (duration) << " sec" << endl;	\
-}
+#include "GeneralizationLogging.h"
 
 void GeneralizationRequestCurve::addMemberFunction(pair<State_t, Event_t> forPair, callBackFunction methodName)
 {
@@ -82,12 +70,12 @@ void GeneralizationRequestCurve::Initialize()
 			std::cout << "Error: Count of points = " << countOfPoints << endl;
 			return;
 		}
-
-		std::clock_t start; double duration = 0;
-		StartTime(start);
+		timer.total_time = new cpu_timer;
+		StartTime(time);
 		this->Adduction();
-		StopTime(duration, start);
-		VerboseTime(duration);
+		StopTime(time, timer, adduction);
+		PauseTime(*timer.total_time);
+		VerboseTime(timer, adduction);
 
 		state = State_t::ADDUCTED;
 	}
@@ -102,7 +90,12 @@ void GeneralizationRequestCurve::Initialize()
 			std::cout << "Error: Count of points = " << countOfPoints << endl;
 			return;
 		}
+		ResumeTime(*timer.total_time);
+		StartTime(time);
 		this->Segmentation();
+		StopTime(time, timer, segmentation);
+		PauseTime(*timer.total_time);
+		VerboseTime(timer, segmentation);
 
 		state = State_t::SEGMENTED;
 	}
@@ -117,7 +110,12 @@ void GeneralizationRequestCurve::Initialize()
 			std::cout << "Error: Count of points = " << countOfPoints << endl;
 			return;
 		}
+		ResumeTime(*timer.total_time);
+		StartTime(time);
 		this->Simplification();
+		StopTime(time, timer, simplification);
+		PauseTime(*timer.total_time);
+		VerboseTime(timer, simplification);
 
 		state = State_t::SIMPLIFIED;
 	}
@@ -132,7 +130,12 @@ void GeneralizationRequestCurve::Initialize()
 			std::cout << "Error: Count of points = " << countOfPoints << endl;
 			return;
 		}
+		ResumeTime(*timer.total_time);
+		StartTime(time);
 		this->Smoothing();
+		StopTime(time, timer, smoothing);
+		StopTime(*timer.total_time, timer, total);
+		VerboseTime(timer, smoothing);
 
 		state = State_t::SMOOTHED;
 	}

@@ -4,6 +4,8 @@
 GeneralizationServer::GeneralizationServer(string Path, string Type,
 	double C, uint32_t Np, uint32_t Ns, double f, uint32_t Ninit)
 {
+	parallel_algortihm = false;
+
 	AlgorithmParams algParams;
 	algParams.C = C;
 	algParams.Np = Np;
@@ -18,6 +20,8 @@ GeneralizationServer::GeneralizationServer(string Path, string Type,
 //http_listener(L"http://localhost/generalization_server"))
 GeneralizationServer::GeneralizationServer(const http::uri& url) : listener(http_listener(url))
 {
+	parallel_algortihm = false;
+
 	listener.support(methods::GET, std::bind(&GeneralizationServer::handle_get,
 						 this,
 						 std::tr1::placeholders::_1));
@@ -156,7 +160,9 @@ void GeneralizationServer::HandleAllCurves(string type)
 	size_t curve_number = (type == "File") ?
 		MethodInvoke(File, GetNumberOfCurves()) :
 		MethodInvoke(DataBase, GetNumberOfCurves());
-	for (size_t i = 0; i < curve_number; i++)
+
+#pragma omp parallel for if ((parallel_algortihm) && (curve_number >= 4))
+	for (int64_t i = 0; i < curve_number; i++)
 	{
 		GeneralizationRequestCurve *requested_curve = &Curves[i];
 		uint32_t size = X(CurvesMap[i]).size();
@@ -165,16 +171,61 @@ void GeneralizationServer::HandleAllCurves(string type)
 		if (size != 0)
 		{
 			requested_curve->DispatchEvent(Event_t::INITIALIZE);
-			cout << "Done" << endl;
 			requested_curve->DispatchEvent(Event_t::ADDUCTION);
-			cout << "Done" << endl;
 			requested_curve->DispatchEvent(Event_t::SEGMENTATION);
-			cout << "Done" << endl;
 			requested_curve->DispatchEvent(Event_t::SIMPLIFICATION);
-			cout << "Done" << endl;
 			requested_curve->DispatchEvent(Event_t::SMOOTHING);
 		}
 	}
+
+	for (int64_t i = 0; i < curve_number; i++)
+	{
+		GeneralizationRequestCurve *requested_curve = &Curves[i];
+		uint32_t size = X(CurvesMap[i]).size();
+		if ((update_db) && (type == "DataBase") && (size != 0))
+		{
+			GenDataBase.UpdateDataBaseObject(requested_curve);
+		}
+
+		if (size != 0)
+			requested_curve->OutputResults();
+	}
+}
+
+int GeneralizationServer::HandleCurve(string type, string Code, long Number)
+{
+	size_t curve_number = (type == "File") ?
+		MethodInvoke(File, GetNumberOfCurves()) :
+		MethodInvoke(DataBase, GetNumberOfCurves());
+	int found = -1;
+
+#pragma omp parallel for if ((parallel_algortihm) && (curve_number >= 4))
+	for (int64_t i = 0; (i < curve_number) && (found == -1); i++)
+	{
+		GeneralizationRequestCurve *requested_curve = &Curves[i];
+		if ((requested_curve->GetDBCode() == Code) &&
+			(requested_curve->GetDBNumber() == Number))
+		{
+			uint32_t size = X(CurvesMap[i]).size();
+			curve *reqCurve = &CurvesMap[i];
+			requested_curve->SetCurve(size, reqCurve);
+			if (size != 0)
+			{
+				requested_curve->DispatchEvent(Event_t::INITIALIZE);
+				requested_curve->DispatchEvent(Event_t::ADDUCTION);
+				requested_curve->DispatchEvent(Event_t::SEGMENTATION);
+				requested_curve->DispatchEvent(Event_t::SIMPLIFICATION);
+				requested_curve->DispatchEvent(Event_t::SMOOTHING);
+				if ((update_db) && (type == "DataBase"))
+				{
+					GenDataBase.UpdateDataBaseObject(requested_curve);
+				}
+				requested_curve->OutputResults();
+			}
+			found = 0;
+		}
+	}
+	return found;
 }
 
 int GeneralizationServer::InitializeCurves(string_t storage_type, string_t storage_path,
@@ -184,6 +235,8 @@ int GeneralizationServer::InitializeCurves(string_t storage_type, string_t stora
 
 	if (storage_type == U("File"))
 	{
+		GenFile.SetPath(utility::conversions::to_utf8string(storage_path));
+
 		res = GenFile.ParseAllDataInFile();
 		if (res != 0)
 			return res;
@@ -194,6 +247,7 @@ int GeneralizationServer::InitializeCurves(string_t storage_type, string_t stora
 		for (uint32_t i = 0; i < GenFile.GetNumberOfCurves(); i++)
 		{
 			Curves[i].SetCurve(X(CurvesMap[i]).size(), &CurvesMap[i]);
+			Curves[i].SetDBInfo("0", i);
 		}
 
 		res = 0;
@@ -229,30 +283,6 @@ int GeneralizationServer::InitializeCurves(string_t storage_type, string_t stora
 
 	return res;
 }
-
-//std::wstring DecodeURL(const std::wstring &a_URL)
-//{
-//	DWORD size = 0;
-//	if (!InternetCanonicalizeUrlW(a_URL.c_str(), NULL, &size, ICU_DECODE | ICU_NO_ENCODE))
-//	{
-//		if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
-//		{
-//			std::wstring buffer;
-//			buffer.resize(size);
-//			if (InternetCanonicalizeUrlW(a_URL.c_str(), (LPWSTR)(void *)buffer.c_str(),
-//				&size, ICU_DECODE | ICU_NO_ENCODE))
-//			{
-//				std::wstring utf8;
-//				utf8.resize(buffer.size());
-//				for (size_t i = 1; i <= buffer.size(); ++i)
-//					utf8[i] = (char)buffer[i];
-//				return utf8;
-//			}
-//		}
-//	}
-//
-//	return NULL;
-//}
 
 void GeneralizationServer::handle_request(http_request request,
 	function<void(json::value &, json::value &)> action)
