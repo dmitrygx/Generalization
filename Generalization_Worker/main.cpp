@@ -20,8 +20,8 @@ int main(int argc, char* argv[])
 	Generalization_ProgramOpt *programOpt = new Generalization_ProgramOpt(argc, argv);
 	cout << "Print command: " << programOpt->GetCommand() << endl;
 	cout << "Print file path: " << programOpt->GetFilePath() << endl;
-	LPTSTR fileName = _tcsdup(TEXT("file.txt"));
 
+	/*LPTSTR fileName = _tcsdup(TEXT("file.txt"));*/
 	/*CreateFile(fileName, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);*/
 
 	GenDataBase.setFileName(programOpt->GetDataBase());

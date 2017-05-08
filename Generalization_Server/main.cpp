@@ -7,13 +7,13 @@
 #include "GeneralizationCurve.h"
 #include "GeneralizationServer.h"
 #include "GeneralizationWorker.h"
-
+#include "GeneralizationProgramOpt.h"
 #include "Thread.h"
 
 using namespace std;
 
-int InitDataBase(GBASE *data_base, GBASE_OBJECT *Object, long &Count);
-void FinalizeDataBase(GBASE *data_base, GBASE_OBJECT *Object);
+void HandleManagerServerType(void);
+void HandleStandaloneServerType(GeneralizationProgramOpt *programOpt);
 
 //static GeneralizationFile GenFile;
 //static GeneralizationDataBase GenDataBase;
@@ -41,7 +41,25 @@ int main(int argc, char* argv[])
 	//Curve->SetValueOfScale(8);
 	//Curve->Simplification();
 	//Curve->Smoothing();*/
+	GeneralizationProgramOpt *programOpt = new GeneralizationProgramOpt(argc, argv);
 
+
+	switch (programOpt->GetServerType())
+	{
+	case ServerType::MANAGER:
+		HandleManagerServerType();
+		break;
+	case ServerType::STANDALONE:
+		HandleStandaloneServerType(programOpt);
+		break;
+	default:
+		break;
+	}
+	
+}
+
+void HandleManagerServerType(void)
+{
 	GeneralizationServer server(L"http://localhost/generalization_server");
 	Thread<GeneralizationServer> server_thread(&server, &GeneralizationServer::start);
 
@@ -50,28 +68,31 @@ int main(int argc, char* argv[])
 	if (server_thread.start())
 		std::cout << "Server Thread start()" << std::endl;
 
-	//cout << "Count of objects " << Count << endl;
-	/*GeneralizationDataBase *GenDataBase = new GeneralizationDataBase;
-	Thread<GeneralizationDataBase> dB_thread(GenDataBase, &GeneralizationDataBase::InitializeDataBase);
-	if (dB_thread.start())
-		std::cout << "DataBase Thread start()" << std::endl;
-
-	dB_thread.join();*/
-
-
-
 	cout << "Done" << endl;
-
 
 	_getch();
 
-	/*FinalizeDataBase(dataBase, Object);*/
-
 	server.ChageStateOfServerThread(false);
-
 	server_thread.join();
 }
 
+void HandleStandaloneServerType(GeneralizationProgramOpt *programOpt)
+{
+	string user_input;
+	GeneralizationServer server(programOpt->GetDataBase(), programOpt->GetStorageType(),
+		programOpt->GetParamC(), programOpt->GetParamNp(), programOpt->GetParamNs(),
+		programOpt->GetParamf(), programOpt->GetParamNinit());
+	cout << "See output file and then specify curve Code:Number which should be handled" << endl;
+	cout << "If you prefer to handle all curve, please specify * (asterix)" << endl;
+	cin >> user_input;
+
+	if (user_input == "*")
+	{
+		server.HandleAllCurves(programOpt->GetStorageType());
+	}
+
+	_getch();
+}
 //int InitDataBase(GBASE *data_base, GBASE_OBJECT *Object, long &Count)
 //{
 //	int result = 0;

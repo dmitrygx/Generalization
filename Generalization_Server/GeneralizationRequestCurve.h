@@ -21,11 +21,11 @@ typedef enum State
 
 typedef enum Event
 {
-	INITIALIZE	= 0,
-	ADDUCTION	= 1,
+	INITIALIZE		= 0,
+	ADDUCTION		= 1,
 	SEGMENTATION	= 2,
 	SIMPLIFICATION	= 3,
-	SMOOTHING	= 4
+	SMOOTHING		= 4
 } Event_t;
 
 class GeneralizationRequestCurve :
@@ -42,6 +42,7 @@ private:
 	State_t state;
 	Event_t event;
 	map<pair<State_t, Event_t>, callBackFunction> matrix;
+	bool verbose;
 
 	void addMemberFunction(pair<State_t, Event_t> forPair, callBackFunction methodName);
 	void Initialize();
@@ -60,5 +61,13 @@ public:
 	long GetDBNumber();
 	size_t DispatchEvent(Event_t newEvent);
 	virtual ~GeneralizationRequestCurve();
+	void SetVerbose(bool value)
+	{
+		verbose = value;
+	}
+	bool GetVerbose(void)
+	{
+		return verbose;
+	}
 };
 

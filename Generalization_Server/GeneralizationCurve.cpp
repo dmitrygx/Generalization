@@ -2,6 +2,8 @@
 #include <cassert>
 #include <iostream>
 
+extern int parallelism_enabled;
+
 GeneralizationCurve::GeneralizationCurve()
 {
 	C = 0.5;
@@ -166,8 +168,8 @@ point* GeneralizationCurve::CheckInterSection(point point1, point point2,
 	double_t x2 = X(point2);
 	double_t y1 = Y(point1);
 	double_t y2 = Y(point2);
-	double_t k = -((y1 - y2) / (x2 - x1));
-	double_t b = -((x1 * y2 - x2 * y1) / (x2 - x1));
+	double_t k = (x2 != x1) ? (-((y1 - y2) / (x2 - x1))) : 0;
+	double_t b = (x2 != x1) ? (-((x1 * y2 - x2 * y1) / (x2 - x1))) : 0;
 	double_t D = (System::Math::Pow((2 * k * b - 2 * X(pointCircle) - 2 * Y(pointCircle) * k), 2) -
 		(4 + 4 * k * k) * (b * b - radius * radius + 
 		X(pointCircle) * X(pointCircle) +
@@ -266,6 +268,7 @@ point* GeneralizationCurve::CheckInterSection(point point1, point point2,
 	}
 	if (second)
 	{
+		delete res;
 		res = new point;
 
 		X(*res) = X2;
@@ -421,6 +424,10 @@ void GeneralizationCurve::Segmentation()
 			if (Value > 1)
 			{
 				Value = 1;
+			}
+			else if (Value < -1)
+			{
+				Value = -1;
 			}
 			AngleOfRotation[i][j] = System::Math::Acos(Value);
 			RotationOfSegment[i] += AngleOfRotation[i][j];
@@ -627,7 +634,9 @@ uint32_t GeneralizationCurve::ComputeQuadrics(uint32_t CurrentSegment, double_t 
 	return CountOfSquare;
 }
 
-void GeneralizationCurve::CopyArraysOfPoints(point *FromArray, point *ToArray, uint32_t Length, uint32_t StartIndexFrom, uint32_t StartIndexTo)
+void GeneralizationCurve::CopyArraysOfPoints(point *FromArray, point *ToArray,
+											 uint32_t Length, uint32_t StartIndexFrom,
+											 uint32_t StartIndexTo)
 {
 	uint32_t k = StartIndexTo;
 
@@ -639,7 +648,8 @@ void GeneralizationCurve::CopyArraysOfPoints(point *FromArray, point *ToArray, u
 
 double_t GeneralizationCurve::ComputeDistBetweenPoints(point *A, point *B)
 {
-	return System::Math::Sqrt(System::Math::Pow((X(*B) - X(*A)), 2) + System::Math::Pow((Y(*B) - Y(*A)), 2));
+	return System::Math::Sqrt(System::Math::Pow((X(*B) - X(*A)), 2) +
+		System::Math::Pow((Y(*B) - Y(*A)), 2));
 }
 
 double_t GeneralizationCurve::ComputeP(double_t DistAB, double_t DistBC, double_t DistAC)
@@ -649,7 +659,7 @@ double_t GeneralizationCurve::ComputeP(double_t DistAB, double_t DistBC, double_
 
 double_t GeneralizationCurve::ComputeS(double_t p, double_t DistAB, double_t DistBC, double_t DistAC)
 {
-	return System::Math::Sqrt(p * (p - DistAB) * (p - DistBC) * (p - DistAC));
+	return System::Math::Sqrt((uint64_t)p * ((uint64_t)p - (uint64_t)DistAB) * ((uint64_t)p - (uint64_t)DistBC) * ((uint64_t)p - (uint64_t)DistAC));
 }
 
 double_t GeneralizationCurve::ComputeDistBetweenPointAndLine(point *A, point *B, point *C)
@@ -660,7 +670,7 @@ double_t GeneralizationCurve::ComputeDistBetweenPointAndLine(point *A, point *B,
 	double_t p = ComputeP(DistAB, DistBC, DistAC);
 	double_t S = ComputeS(p, DistAB, DistBC, DistAC);
 
-	return (2 * S / DistAB);
+	return (DistAB != 0) ? (2 * S / DistAB) : 0;
 }
 
 void GeneralizationCurve::SetValueOfScale(double_t m)
@@ -847,6 +857,11 @@ void GeneralizationCurve::Simplification()
 	X /= 10;
 	X2 /= 10;
 
+	TotalCountOfPointsAfterSimplification = 0;
+	PointsAfterSimplification = new curve*[ResultSegmentCount];
+	CountOfPointsAfterSimplification.resize(ResultSegmentCount);
+
+#pragma omp parallel for if(parallelism_enabled)
 	for (uint32_t i = 0; i < ResultSegmentCount; ++i)
 	{
 		for (uint32_t j = 0; j < k; ++j)
@@ -856,29 +871,20 @@ void GeneralizationCurve::Simplification()
 		Y[i] /= 10;
 		XY[i] = X * Y[i];
 		XY[i] /= 10;
-	}
 
-	for (uint32_t i = 0; i < ResultSegmentCount; ++i)
-	{
 		LinearRegK[i] = (XY[i] * X * Y[i]) / (X2 * System::Math::Pow(X, 2));
 		LinearRegB[i] = (X2 * Y[i] - X * XY[i]) / (X2 - System::Math::Pow(X, 2));
 		AngularCoeffRegresLine[i] = LinearRegK[i];
-	}
-
-	TotalCountOfPointsAfterSimplification = 0;
-	PointsAfterSimplification = new curve*[ResultSegmentCount];
-	CountOfPointsAfterSimplification.resize(ResultSegmentCount);
-
-	for (uint32_t i = 0; i < ResultSegmentCount; ++i)
-	{
 		uint32_t CountOfPoints = 0;
 
 		PointsAfterSimplification[i] = SimplificationOfSegment(&AdductionPointsInSegment[i],
 			&CountOfAdductionPointsInSegment[i], i, CountOfPoints);
 
 		CountOfPointsAfterSimplification[i] = CountOfPoints;
-		TotalCountOfPointsAfterSimplification += CountOfPointsAfterSimplification[i];
+		
 	}
+	for (uint32_t i = 0; i < ResultSegmentCount; ++i)
+		TotalCountOfPointsAfterSimplification += CountOfPointsAfterSimplification[i];
 }
 
 void GeneralizationCurve::Smoothing()
