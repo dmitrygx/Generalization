@@ -111,6 +111,7 @@ public:
 
 	void ConvertFromStrDBCodeToInt(std::string s, BASE_INT *code);
 	int WriteDataBaseObject(GeneralizationRequestCurve *Curve);
+	int GeneralizationDataBase::UpdateDataBaseObject_UpdateMetric(GeneralizationRequestCurve *Curve);
 	int DeleteDataBaseObject(GeneralizationRequestCurve *Curve);
 	int UpdateDataBaseObject(GeneralizationRequestCurve *Curve);
 };

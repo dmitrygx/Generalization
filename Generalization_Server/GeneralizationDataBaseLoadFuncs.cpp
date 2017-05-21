@@ -27,7 +27,7 @@ GeneralizationDataBaseLoadFuncs::GeneralizationDataBaseLoadFuncs()
 		LoadFunction(_BaseCodeStr, BaseCodeStr, "BaseCodeStr");
 		LoadFunction(_BaseWriteObject, BaseWriteObject, "BaseWriteObject");
 		LoadFunction(_BaseDeleteObject, BaseDeleteObject, "BaseDeleteObject");
-		/*LoadFunction(BasePrintObjectToFile, _BasePrintObjectToFile, "BasePrintObjectToFile");*/
+		LoadFunction(_BaseUpdateMetric, BaseUpdateMetric, "BaseUpdateMetric");
 
 		cout << "All functions are loaded" << endl;
 	}

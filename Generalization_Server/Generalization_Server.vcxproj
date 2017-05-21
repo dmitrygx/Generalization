@@ -93,7 +93,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalUsingDirectories>System</AdditionalUsingDirectories>
       <AdditionalIncludeDirectories>C:\Users\dgladkov\Documents\Education\database\INCLUDE;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <OpenMPSupport>false</OpenMPSupport>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

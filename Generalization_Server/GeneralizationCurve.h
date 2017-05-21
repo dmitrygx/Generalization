@@ -72,8 +72,32 @@ private:
 		uint32_t *CountOfAdductionPointsInSegment, uint32_t i, uint32_t &CountOfPoints);
 public:
 	GeneralizationCurve();
-	GeneralizationCurve(double_t C_, uint32_t Np_,
-		uint32_t Ns_, double_t f_, uint32_t Ninit_);
+	GeneralizationCurve(double_t C_ = 0.5, uint32_t Np_ = 500,
+		uint32_t Ns_ = 50, double_t f_ = 5, uint32_t Ninit_ = 1000,
+		int parallelism = 0);
+
+	/* Setters */
+	void SetParamC(double C_)
+	{
+		C = C_;
+	}
+	void SetParamNp(uint32_t Np_)
+	{
+		Np = Np_;
+	}
+	void SetParamNinit(uint32_t Ninit_)
+	{
+		Ninit = Ninit_;
+	}
+	void SetParamf(double f_)
+	{
+		f = f_;
+	}
+	void SetParamNs(uint32_t Ns_)
+	{
+		Ns = Ns_;
+	}
+	/* ~Setters */
 
 	/* Getters */
 	curve* GetSouceCurve();

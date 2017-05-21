@@ -1,18 +1,5 @@
 #include "GeneralizationRequestCurve.h"
 #include <ctime>
-
-#define StartTime(start)	\
-	(start) = std::clock();
-
-#define StopTime(start, duration)					\
-	(duration) = (std::clock() - (start)) / (double)CLOCKS_PER_SEC;
-
-#define VerboseTime(duration)				\
-if (GetVerbose())					\
-{							\
-	cout << (duration) << " sec" << endl;		\
-}
-
 #include "GeneralizationLogging.h"
 
 
@@ -21,7 +8,8 @@ void GeneralizationRequestCurve::addMemberFunction(pair<State_t, Event_t> forPai
 	matrix[forPair] = methodName;
 }
 
-GeneralizationRequestCurve::GeneralizationRequestCurve()
+GeneralizationRequestCurve::GeneralizationRequestCurve() :
+	GeneralizationCurve(0.5, 500, 50, 5, 1000, 0)
 {
 	state = State_t::UNITIALIZED;
 
@@ -30,15 +18,16 @@ GeneralizationRequestCurve::GeneralizationRequestCurve()
 
 GeneralizationRequestCurve::GeneralizationRequestCurve(
 	double_t C_, uint32_t Np_, uint32_t Ns_,
-	double_t f_, uint32_t Ninit_) :
-	GeneralizationCurve(C_, Np_, Ns_, f_, Ninit_)
+	double_t f_, uint32_t Ninit_, int parallelism) :
+	GeneralizationCurve(C_, Np_, Ns_, f_, Ninit_, parallelism)
 {
 	state = State_t::UNITIALIZED;
 
 	Initialize();
 }
 
-GeneralizationRequestCurve::GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve)
+GeneralizationRequestCurve::GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve) :
+	GeneralizationCurve(0.5, 500, 50, 5, 1000, 0)
 {
 	state = State_t::UNITIALIZED;
 	Curve = newCurve;
@@ -49,8 +38,8 @@ GeneralizationRequestCurve::GeneralizationRequestCurve(uint32_t newCountOfPoints
 
 GeneralizationRequestCurve::GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve,
 	double_t C_, uint32_t Np_, uint32_t Ns_,
-	double_t f_, uint32_t Ninit_) :
-	GeneralizationCurve(C_, Np_, Ns_, f_, Ninit_)
+	double_t f_, uint32_t Ninit_, int parallelism) :
+	GeneralizationCurve(C_, Np_, Ns_, f_, Ninit_, parallelism)
 {
 	state = State_t::UNITIALIZED;
 	Curve = newCurve;
