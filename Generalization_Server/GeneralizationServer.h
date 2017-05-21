@@ -32,6 +32,7 @@ struct AlgorithmParams
 	uint32_t Ns;
 	double f;
 	uint32_t Ninit;
+	int OpenMP;
 };
 
 class GeneralizationServer

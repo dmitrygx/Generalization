@@ -13,10 +13,11 @@ GeneralizationCurve::GeneralizationCurve()
 	f = 5;
 	Ninit = 1000;
 	M = 1;
+	parallelism_enabled = 0;
 }
 
-GeneralizationCurve::GeneralizationCurve(double_t C_ = 0.5, uint32_t Np_ = 500,
-	uint32_t Ns_ = 50, double_t f_ = 5, uint32_t Ninit_ = 1000)
+GeneralizationCurve::GeneralizationCurve(double_t C_, uint32_t Np_,
+	uint32_t Ns_, double_t f_, uint32_t Ninit_, int parallelism)
 {
 	C = C_;
 	Np = Np_;
@@ -24,6 +25,7 @@ GeneralizationCurve::GeneralizationCurve(double_t C_ = 0.5, uint32_t Np_ = 500,
 	f = f_;
 	Ninit = Ninit_;
 	M = 1;
+	parallelism_enabled = parallelism;
 }
 
 curve* GeneralizationCurve::CurveDup(curve *fromCurve)
@@ -834,14 +836,18 @@ void GeneralizationCurve::Simplification()
 	Dbc.resize(ResultSegmentCount);
 	// UInt32[, ] NE = new UInt32[ResultSegmentCount, k];
 	// Double[, ] Dbc = new Double[ResultSegmentCount, k]; // Box-Counting
-
-	for (uint32_t i = 0; i < ResultSegmentCount; ++i)
+#pragma omp parallel for if ((parallelism_enabled) && (ResultSegmentCount >= 4))
+	for (int i = 0; i < ResultSegmentCount; ++i)
 	{
+		std::cout << omp_get_num_threads() << std::endl;
+		NE[i].resize(k);
+		Dbc[i].resize(k);
 		for (uint32_t j = 0; j < k; ++j)
 		{
-			NE[i].push_back(ComputeQuadrics(i, Radius * (j + 1)));
-
-			Dbc[i].push_back(System::Math::Log10(NE[i][j]) / System::Math::Log10(1 / (Radius * (j + 1))));
+			NE[i][j] = (ComputeQuadrics(i, Radius * (j + 1)));
+			std::cout << "..." << omp_get_thread_num() << "...";
+			Dbc[i][j] = (System::Math::Log10(NE[i][j]) / System::Math::Log10(1 / (Radius * (j + 1))));
+			std::cout << "[" << i << "][" << j << "]" << " " << NE[i][j] << "; " << Dbc[i][j] << std::endl;
 		}
 	}
 
@@ -924,11 +930,6 @@ void GeneralizationCurve::Smoothing()
 		Y(*PointsAfterSmoothing[i]).push_back(
 			Y(*PointsAfterSimplification[i])[CountOfPointsAfterSimplification[i] - 1]);
 	}
-}
-
-void GeneralizationCurve::Save()
-{
-
 }
 
 GeneralizationCurve::~GeneralizationCurve()

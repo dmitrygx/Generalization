@@ -354,4 +354,5 @@ public:
 	BaseCodeStr _BaseCodeStr;
 	BaseWriteObject _BaseWriteObject;
 	BaseDeleteObject _BaseDeleteObject;
+	BaseUpdateMetric _BaseUpdateMetric;
 };

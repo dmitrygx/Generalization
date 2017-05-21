@@ -111,13 +111,13 @@ private:
 	GeneralizationTimer timer;
 public:
 	GeneralizationRequestCurve();
-	GeneralizationRequestCurve::GeneralizationRequestCurve(
-		double_t C_ = 0.5, uint32_t Np_ = 500, uint32_t Ns_ = 50,
-		double_t f_ = 5, uint32_t Ninit_ = 1000);
+	GeneralizationRequestCurve(
+		double_t C_, uint32_t Np_, uint32_t Ns_,
+		double_t f_, uint32_t Ninit_, int parallelism);
+	GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve,
+		double_t C_, uint32_t Np_, uint32_t Ns_,
+		double_t f_, uint32_t Ninit_, int parallelism);
 	GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve);
-	GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve, 
-		double_t C_ = 0.5, uint32_t Np_ = 500, uint32_t Ns_ = 50,
-		double_t f_ = 5, uint32_t Ninit_ = 1000);
 	void SetCurve(uint32_t newCountOfPoints, curve *newCurve);
 	void SetDBInfo(string dbCode, long dbNumber);
 	string GetDBCode();
