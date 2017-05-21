@@ -14,6 +14,7 @@
 class GeneralizationCurve
 {
 private:
+	bool parallelism_enabled;
 	double_t C;
 	uint32_t Ninit;
 	uint32_t Np;
@@ -87,6 +88,7 @@ public:
 
 	void BuildCurve(uint32_t countOfPoints, curve *newCurve);
 	void SetValueOfScale(double_t m);
+	void SetParallelismMode(bool mode);
 	void Adduction();
 	void Segmentation();
 	void Simplification();

@@ -21,9 +21,6 @@
     <ClCompile Include="Generalization_ProgramOpt.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Generalization_Server\GeneralizationDataBase.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\Generalization_Server\GeneralizationDataBaseLoadFuncs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -33,9 +30,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\Generalization_Server\common.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Generalization_Server\GeneralizationDataBase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\Generalization_Server\GeneralizationDataBaseLoadFuncs.h">
