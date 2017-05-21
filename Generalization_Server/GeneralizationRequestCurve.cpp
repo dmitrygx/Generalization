@@ -1,5 +1,20 @@
 #include "GeneralizationRequestCurve.h"
+#include <ctime>
+
+#define StartTime(start)	\
+	(start) = std::clock();
+
+#define StopTime(start, duration)					\
+	(duration) = (std::clock() - (start)) / (double)CLOCKS_PER_SEC;
+
+#define VerboseTime(duration)				\
+if (GetVerbose())					\
+{							\
+	cout << (duration) << " sec" << endl;		\
+}
+
 #include "GeneralizationLogging.h"
+
 
 void GeneralizationRequestCurve::addMemberFunction(pair<State_t, Event_t> forPair, callBackFunction methodName)
 {

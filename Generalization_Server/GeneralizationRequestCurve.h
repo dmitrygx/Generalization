@@ -66,7 +66,7 @@ typedef enum State
 	ADDUCTED	= 1,
 	SEGMENTED	= 2,
 	SIMPLIFIED	= 3,
-	SMOOTHED	= 4
+	SMOOTHED	= 4,
 } State_t;
 
 typedef enum Event
@@ -75,7 +75,7 @@ typedef enum Event
 	ADDUCTION	= 1,
 	SEGMENTATION	= 2,
 	SIMPLIFICATION	= 3,
-	SMOOTHING	= 4
+	SMOOTHING	= 4,
 } Event_t;
 
 struct GeneralizationTimer

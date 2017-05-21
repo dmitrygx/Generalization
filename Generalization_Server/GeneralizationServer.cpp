@@ -47,6 +47,7 @@ GeneralizationServer::GeneralizationServer(const http::uri& url) : listener(http
 	allowedPath[static_cast<string_t>(U("segmentation_curve"))] = SEGMENTATION_CURVE;
 	allowedPath[static_cast<string_t>(U("simplification_curve"))] = SIMPLIFICATION_CURVE;
 	allowedPath[static_cast<string_t>(U("smoothing_curve"))] = SMOOTHING_CURVE;
+	allowedPath[static_cast<string_t>(U("save_curve"))] = SAVE_CURVE;
 
 	running = true;
 	/*try
@@ -676,6 +677,27 @@ void GeneralizationServer::handle_request(http_request request,
 		request.reply(status_codes::OK, root);
 		return;
 	}
+	else if ((reqObj == SAVE_CURVE) && (initialized))
+	{
+		auto found_curve = http_get_vars.find(U("curve_number"));
+
+		if (found_curve == end(http_get_vars)) {
+			auto err = U("Request received with get var \"curve_number\" omitted from query.");
+			wcout << err << endl;
+			/* BAD */
+			request.reply(status_codes::BadRequest);
+			return;
+		}
+
+		auto request_curve = found_curve->second;
+		wcout << U("Received request SAVE_CURVE: ") << request_curve << endl;
+		uint32_t requested_curve_number = atoi((char*)request_curve.c_str());
+		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
+		
+
+
+		request.reply(status_codes::OK);
+		return;
 
 	/*std::cout << utility::conversions::to_utf8string(request.to_string()) << endl;*/
 
@@ -743,25 +765,22 @@ void GeneralizationServer::handle_post(http_request request)
 
 	handle_request(
 		request,
-		[](json::value & jvalue, json::value & answer)
+		[&](json::value & jvalue, json::value & answer)
 		{
-			//for (auto const & e : jvalue)
-			//{
-			//	if (e.second.is_string())
-			//	{
-			//		auto key = e.second.as_string();
+			auto http_get_vars = uri::split_query(request.request_uri().query());
+			wcout << "QUERY : " << endl;
+			wcout << request.request_uri().query() << endl;
+			auto found_name = http_get_vars.find(U("/curve"));
 
-			//		/*if (pos == dictionary.end())
-			//		{
-			//			answer.push_back(make_pair(json::value(key), json::value(L"<nil>")));
-			//		}
-			//		else
-			//		{
-			//			answer.push_back(make_pair(json::value(pos->first), json::value(pos->second)));
-			//		}*/
-			//	}
-			//}
-			wcout << jvalue.serialize() << endl;
+			if (found_name == end(http_get_vars)) {
+				auto err = U("Request received with get var \"request\" omitted from query.");
+				wcout << err << endl;
+				/* BAD */
+				return;
+			}
+
+			auto request_name = found_name->second;
+			wcout << U("Received request: ") << request_name << endl;
 		});
 }
 

@@ -926,6 +926,11 @@ void GeneralizationCurve::Smoothing()
 	}
 }
 
+void GeneralizationCurve::Save()
+{
+
+}
+
 GeneralizationCurve::~GeneralizationCurve()
 {
 	delete[] Points;
