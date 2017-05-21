@@ -42,13 +42,14 @@ protected:
 
 	typedef enum Objects
 	{
-		UNDEFINED				= -1,
-		INITIALIZE				= 0,
+		UNDEFINED			= -1,
+		INITIALIZE			= 0,
 		SOURCE_CURVE			= 1,
 		ADDUCTION_CURVE			= 2,
 		SEGMENTATION_CURVE		= 3,
-		SIMPLIFICATION_CURVE	= 4,
-		SMOOTHING_CURVE			= 5
+		SIMPLIFICATION_CURVE		= 4,
+		SMOOTHING_CURVE			= 5,
+		SAVE_CURVE			= 6
 	} Objects_t;
 
 	map <string_t, Objects_t> allowedPath;
