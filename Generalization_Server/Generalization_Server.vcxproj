@@ -93,6 +93,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalUsingDirectories>System</AdditionalUsingDirectories>
       <AdditionalIncludeDirectories>C:\Users\dgladkov\Documents\Education\database\INCLUDE;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OpenMPSupport>false</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -125,8 +126,10 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -166,13 +169,18 @@
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</CompileAsManaged>
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</CompileAsManaged>
     </ClCompile>
+    <ClCompile Include="GeneralizationLogging.cpp" />
     <ClCompile Include="GeneralizationProgramOpt.cpp">
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</CompileAsManaged>
     </ClCompile>
     <ClCompile Include="GeneralizationWorker.cpp" />
     <ClCompile Include="GeneralizationWorkerInvoke.cpp" />
-    <ClCompile Include="GeneraliztionFile.cpp" />
-    <ClCompile Include="GeneralizationCurve.cpp" />
+    <ClCompile Include="GeneraliztionFile.cpp">
+      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="GeneralizationCurve.cpp">
+      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</CompileAsManaged>
+    </ClCompile>
     <ClCompile Include="GeneralizationRequestCurve.cpp">
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</CompileAsManaged>
     </ClCompile>
@@ -191,6 +199,7 @@
     <ClInclude Include="GeneralizationDataBase.h" />
     <ClInclude Include="GeneralizationDataBaseLoadFuncs.h" />
     <ClInclude Include="GeneralizationFile.h" />
+    <ClInclude Include="GeneralizationLogging.h" />
     <ClInclude Include="GeneralizationProgramOpt.h" />
     <ClInclude Include="GeneralizationRequestCurve.h" />
     <ClInclude Include="GeneralizationServer.h" />

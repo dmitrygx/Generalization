@@ -1,8 +1,9 @@
 #include "GeneralizationCurve.h"
 #include <cassert>
 #include <iostream>
-
-extern int parallelism_enabled;
+#ifdef _OPENMP
+# include <omp.h>
+#endif
 
 GeneralizationCurve::GeneralizationCurve()
 {
@@ -678,6 +679,11 @@ void GeneralizationCurve::SetValueOfScale(double_t m)
 	M = m;
 }
 
+void GeneralizationCurve::SetParallelismMode(bool mode)
+{
+	parallelism_enabled = mode;
+}
+
 curve* GeneralizationCurve::SimplificationOfCurve(curve *initialPoints, uint32_t len, double_t H, uint32_t &CountOfNewPoints)
 {
 	curve *newPoints = new curve;
@@ -861,10 +867,10 @@ void GeneralizationCurve::Simplification()
 	PointsAfterSimplification = new curve*[ResultSegmentCount];
 	CountOfPointsAfterSimplification.resize(ResultSegmentCount);
 
-#pragma omp parallel for if(parallelism_enabled)
-	for (uint32_t i = 0; i < ResultSegmentCount; ++i)
+#pragma omp parallel for if ((parallelism_enabled) && (ResultSegmentCount >= 4))
+	for (int32_t i = 0; i < ResultSegmentCount; ++i)
 	{
-		for (uint32_t j = 0; j < k; ++j)
+		for (int32_t j = 0; j < k; ++j)
 		{
 			Y[i] += Dbc[i][j];
 		}

@@ -75,6 +75,9 @@ protected:
 	GeneralizationRequestCurve *Curves;
 
 	boolean running;
+
+	bool parallel_algortihm;
+	bool update_db;
 public:
 	GeneralizationServer(string Path, string Type,
 		double C, uint32_t Np, uint32_t Ns, double f, uint32_t Ninit);
@@ -82,6 +85,11 @@ public:
 	DWORD start();
 	
 	virtual ~GeneralizationServer();
+
+	void SetParallelismMode(bool mode)
+	{
+		parallel_algortihm = mode;
+	}
 
 	void ChageStateOfServerThread(boolean state)
 	{
@@ -99,7 +107,11 @@ public:
 	}
 	void AllocateMemCurves(size_t Count, double_t C_, uint32_t Np_,
 		uint32_t Ns_, double_t f_, uint32_t Ninit_);
-
+	void SetUpdateDBFlag(bool value)
+	{
+		update_db = false;
+	}
 	void HandleAllCurves(string type);
+	int HandleCurve(string type, string Code, long Number);
 };
 

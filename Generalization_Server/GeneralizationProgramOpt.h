@@ -8,26 +8,28 @@
 
 #include <string>
 
+#include "GeneralizationLogging.h"
+
 using namespace std;
 
 namespace po = boost::program_options;
 
-#define UpdateValue(vm, name, type)								\
-do {															\
-	if (!vm.count(param_##name##_main))							\
-	{															\
-		param##name = default_param##name ;						\
-	}															\
-	else														\
-	{															\
-		param##name = std::sto##type (param##name##_str);		\
-	}															\
-} while(0)
+#define UpdateValue(vm, name, type)					\
+do {									\
+	if (!vm.count(param_##name##_main))				\
+	{								\
+		param##name = default_param##name ;			\
+	}								\
+	else								\
+	{								\
+		param##name = std::sto##type (param##name##_str);	\
+	}								\
+} while (0)
 
 #define INIT_GETTER(type, name)	\
-type GetParam##name(void)		\
-{								\
-	return param##name;			\
+type GetParam##name(void)	\
+{				\
+	return param##name;	\
 }
 
 enum ServerType 
@@ -53,6 +55,15 @@ private:
 	const string storage_file = "File";
 	const string storage_database = "DataBase";
 
+	bool verbose;
+	bool output_results;
+
+	bool update_db;
+
+#ifdef _OPENMP
+	bool openmp_support;
+#endif
+
 	string paramC_str;
 	const double default_paramC = 0.5;
 	double paramC = 0;
@@ -77,6 +88,16 @@ private:
 	const char *database_main = "database";
 	const char *storage_type_arg = "storage,s";
 	const char *storage_type_main = "storage";
+	const char *update_arg = "update,u";
+	const char *update_main = "update";
+	const char *verbose_arg = "verbose,v";
+	const char *verbose_main = "verbose";
+	const char *output_results_arg = "output_results,o";
+	const char *output_results_main = "output_results";
+#ifdef _OPENMP
+	const char *open_mp_support_arg = "open_mp_support,m";
+	const char *open_mp_support_main = "open_mp_support";
+#endif
 	const char *param_C_arg = "param_C,C";
 	const char *param_C_main = "param_C";
 	const char *param_Np_arg = "param_Np,P";
@@ -104,6 +125,28 @@ public:
 	string GetStorageType(void)
 	{
 		return storage_type;
+	}
+
+	bool IsVerbose()
+	{
+		return verbose;
+	}
+
+	bool IsOutputResults()
+	{
+		return output_results;
+	}
+
+#ifdef _OPENMP
+	bool IsOpenMPSupport()
+	{
+		return openmp_support;
+	}
+#endif
+
+	bool IsUpdateDB()
+	{
+		return update_db;
 	}
 
 	INIT_GETTER(double, C);
