@@ -5,11 +5,19 @@
 #include <vector>
 #include <utility>
 #include <map>
+#include <functional>
+#include <atomic>
 
 #include "common.h"
 
 #define X(point) ((point).first)
 #define Y(point) ((point).second)
+
+typedef enum MathType {
+	StdMath		= 0,
+	IntelMklMath	= 1,
+	MaxMath		= 2,
+} MathType;
 
 class GeneralizationCurve
 {
@@ -21,6 +29,20 @@ private:
 	uint32_t Ns;
 	double_t f;
 	double_t M;
+
+	MathType math_type = StdMath;
+
+	std::function<double(void)> ComputeDistances[MaxMath];
+	std::function<point*(point point1, point point2,
+		double_t radius, point pointCircle)> CheckInterSection[2];
+	std::function<void(void)> SegmentationInner[MaxMath];
+	std::function<uint32_t(uint32_t CurrentSegment, double_t dist)> ComputeQuadrics[MaxMath];
+	std::function<double_t(point *A, point *B)> ComputeDistBetweenPoints[MaxMath];
+	std::function<void(void)> SimplificationInner[MaxMath];
+	std::function<curve*(curve* AdductionPointsInSegment,
+		uint32_t *CountOfAdductionPointsInSegment,
+		uint32_t i, uint32_t &CountOfPoints)> SimplificationOfSegment[MaxMath];
+
 	uint32_t CountPoints;
 	curve *Points;
 	std::vector<double_t> Distance;
@@ -51,25 +73,50 @@ private:
 	uint32_t TotalCountOfPointsAfterSmoothing;
 
 	curve* CurveDup(curve *fromCurve);
-	double_t ComputeDistances();
+	
+	double_t ComputeDistancesMath(void);
+	double_t ComputeDistancesMkl(void);
+
 	double_t ComputeAvarageDistance();
 	double_t ComputeRadius(double_t averageDistance);
 	bool BelongPoints(point point1, point point2, point current);
-	point* CheckInterSection(point point1, point point2,
+	
+	
+	point* CheckInterSectionMath(point point1, point point2,
 		double_t radius, point pointCircle);
+	point* CheckInterSectionMkl(point point1, point point2,
+		double_t radius, point pointCircle);
+
+	void SegmentationMath();
+	void SegmentationMkl();
+
 	double_t func1(point *p1, point *p2, point *pnt);
 	bool IntersectionLineAndSquare(point *p1, point *p2, std::vector<point> *points);
-	uint32_t ComputeQuadrics(uint32_t CurrentSegment, double_t dist);
+
+	uint32_t ComputeQuadricsMath(uint32_t CurrentSegment, double_t dist);
+	uint32_t ComputeQuadricsMkl(uint32_t CurrentSegment, double_t dist);
+
 	void CopyArraysOfPoints(point *FromArray, point *ToArray, uint32_t Length,
 		uint32_t StartIndexFrom, uint32_t StartIndexTo);
-	double_t ComputeDistBetweenPoints(point *A, point *B);
+
+	double_t ComputeDistBetweenPointsMath(point *A, point *B);
+	double_t ComputeDistBetweenPointsMkl(point *A, point *B);
+
 	double_t ComputeP(double_t DistAB, double_t DistBC, double_t DistAC);
 	double_t ComputeS(double_t p, double_t DistAB, double_t DistBC, double_t DistAC);
 	double_t ComputeDistBetweenPointAndLine(point *A, point *B, point *C);
 	curve* SimplificationOfCurve(curve *initialPoints, uint32_t len,
 		double_t H, uint32_t &CountOfNewPoints);
-	curve* SimplificationOfSegment(curve* AdductionPointsInSegment,
+
+	curve* SimplificationOfSegmentMath(curve* AdductionPointsInSegment,
 		uint32_t *CountOfAdductionPointsInSegment, uint32_t i, uint32_t &CountOfPoints);
+	curve* SimplificationOfSegmentMkl(curve* AdductionPointsInSegment,
+		uint32_t *CountOfAdductionPointsInSegment, uint32_t i, uint32_t &CountOfPoints);
+
+	void SimplificationMath(void);
+	void SimplificationMkl(void);
+
+	void InitializeClassMembers(void);
 public:
 	GeneralizationCurve();
 	GeneralizationCurve(double_t C_ = 0.5, uint32_t Np_ = 500,
@@ -77,6 +124,14 @@ public:
 		int parallelism = 0);
 
 	/* Setters */
+	void SetUseMkl(bool use)
+	{
+		math_type = use ? IntelMklMath : StdMath;
+	}
+	void SetUseOpenMP(bool use)
+	{
+		parallelism_enabled = use;
+	}
 	void SetParamC(double C_)
 	{
 		C = C_;
