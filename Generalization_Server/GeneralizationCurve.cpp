@@ -1,12 +1,77 @@
-#include "GeneralizationCurve.h"
+Ôªø#include "GeneralizationCurve.h"
 #include <cassert>
 #include <iostream>
 #ifdef _OPENMP
 # include <omp.h>
 #endif
 
+#define MKL_INT size_t
+#include "mkl.h"
+
 #define _USE_MATH_DEFINES
 #include <math.h>
+
+void GeneralizationCurve::InitializeClassMembers(void)
+{
+	ComputeDistances[StdMath] = [this](){
+		return this->ComputeDistancesMath(); 
+	};
+	ComputeDistances[IntelMklMath] = [this]() {
+		return this->ComputeDistancesMkl();
+	};
+
+	CheckInterSection[StdMath] = [this](point point1, point point2,
+		double_t radius, point pointCircle) {
+		return this->CheckInterSectionMath(point1, point2,
+						   radius, pointCircle);
+	};
+	CheckInterSection[IntelMklMath] = [this](point point1, point point2,
+		double_t radius, point pointCircle) {
+		return this->CheckInterSectionMkl(point1, point2,
+			radius, pointCircle);
+	};
+
+	SegmentationInner[StdMath] = [this]() {
+		this->SegmentationMath();
+	};
+	SegmentationInner[IntelMklMath] = [this]() {
+		this->SegmentationMkl();
+	};
+
+	ComputeQuadrics[StdMath] = [this](uint32_t CurrentSegment, double_t dist) {
+		return this->ComputeQuadricsMath(CurrentSegment, dist);
+	};
+	ComputeQuadrics[IntelMklMath] = [this](uint32_t CurrentSegment, double_t dist) {
+		return this->ComputeQuadricsMkl(CurrentSegment, dist);
+	};
+
+	ComputeDistBetweenPoints[StdMath] = [this](point *A, point *B) {
+		return this->ComputeDistBetweenPointsMath(A, B);
+	};
+	ComputeDistBetweenPoints[IntelMklMath] = [this](point *A, point *B) {
+		return this->ComputeDistBetweenPointsMkl(A, B);
+	};
+
+	SimplificationInner[StdMath] = [this]() {
+		this->SimplificationMath();
+	};
+	SimplificationInner[IntelMklMath] = [this]() {
+		this->SimplificationMkl();
+	};
+
+	SimplificationOfSegment[StdMath] = [this](curve* AdductionPointsInSegment,
+		uint32_t *CountOfAdductionPointsInSegment,
+		uint32_t i, uint32_t &CountOfPoint) {
+		return SimplificationOfSegmentMath(AdductionPointsInSegment,
+			CountOfAdductionPointsInSegment, i, CountOfPoint);
+	};
+	SimplificationOfSegment[IntelMklMath] = [this](curve* AdductionPointsInSegment,
+		uint32_t *CountOfAdductionPointsInSegment,
+		uint32_t i, uint32_t &CountOfPoint) {
+		return SimplificationOfSegmentMkl(AdductionPointsInSegment,
+			CountOfAdductionPointsInSegment, i, CountOfPoint);
+	};
+}
 
 GeneralizationCurve::GeneralizationCurve()
 {
@@ -17,6 +82,8 @@ GeneralizationCurve::GeneralizationCurve()
 	Ninit = 1000;
 	M = 1;
 	parallelism_enabled = 0;
+
+	InitializeClassMembers();
 }
 
 GeneralizationCurve::GeneralizationCurve(double_t C_, uint32_t Np_,
@@ -29,6 +96,8 @@ GeneralizationCurve::GeneralizationCurve(double_t C_, uint32_t Np_,
 	Ninit = Ninit_;
 	M = 1;
 	parallelism_enabled = parallelism;
+
+	InitializeClassMembers();
 }
 
 curve* GeneralizationCurve::CurveDup(curve *fromCurve)
@@ -107,7 +176,7 @@ void GeneralizationCurve::BuildCurve(uint32_t countOfPoints, curve *newCurve)
 	Radius = 0;
 }
 
-double_t GeneralizationCurve::ComputeDistances()
+double_t GeneralizationCurve::ComputeDistancesMath(void)
 {
 	double_t sum = 0;
 	for (uint32_t i = 0; i < CountPoints - 1; i++)
@@ -120,9 +189,26 @@ double_t GeneralizationCurve::ComputeDistances()
 	return sum;
 }
 
+double_t GeneralizationCurve::ComputeDistancesMkl(void)
+{
+	double_t sum = 0;
+	for (uint32_t i = 0; i < CountPoints - 1; i++)
+	{
+		double_t PointSubX = (X(*Points)[i + 1] - X(*Points)[i]);
+		double_t PointSubY = (Y(*Points)[i + 1] - Y(*Points)[i]);
+		double_t PointX2 = PointSubX*PointSubX, PointY2 = PointSubY*PointSubY, Point2Sum;
+		Point2Sum = PointX2 + PointY2;
+		vmdSqrt(1, &Point2Sum, &Distance[i], 0);
+
+		sum += Distance[i];
+	}
+
+	return sum;
+}
+
 double_t GeneralizationCurve::ComputeAvarageDistance()
 {
-	double_t sum = ComputeDistances();
+	double_t sum = ComputeDistances[0]();
 
 	return sum / (CountPoints - 1);
 }
@@ -167,7 +253,7 @@ bool GeneralizationCurve::BelongPoints(point point1, point point2, point current
 	return belong;
 }
 
-point* GeneralizationCurve::CheckInterSection(point point1, point point2,
+point* GeneralizationCurve::CheckInterSectionMath(point point1, point point2,
 	double_t radius, point pointCircle)
 {
 	double_t x1 = X(point1);
@@ -195,11 +281,11 @@ point* GeneralizationCurve::CheckInterSection(point point1, point point2,
 
 	//if (X1 == X2)
 	//{
-	//	//System.Windows.Forms.MessageBox.Show(" Œ‰Ì‡ ÚÓ˜Í‡ ÔÂÂÒÂ˜ÂÌËˇ " + X1.ToString() + " " + Y1.ToString());
+	//	//System.Windows.Forms.MessageBox.Show(" –û–¥–Ω–∞ —Ç–æ—á–∫–∞ –ø–µ—Ä–µ—Å–µ—á–µ–Ω–∏—è " + X1.ToString() + " " + Y1.ToString());
 	//}
 	//else
 	//{
-	//	//System.Windows.Forms.MessageBox.Show(" ƒ‚Â ÚÓ˜ÍË ÔÂÂÒÂ˜ÂÌËˇ " + X1.ToString() + " " + Y1.ToString() + " Ë " + X2.ToString() + " " + Y2.ToString());
+	//	//System.Windows.Forms.MessageBox.Show(" –î–≤–µ —Ç–æ—á–∫–∏ –ø–µ—Ä–µ—Å–µ—á–µ–Ω–∏—è " + X1.ToString() + " " + Y1.ToString() + " –∏ " + X2.ToString() + " " + Y2.ToString());
 	//}
 
 	// First root
@@ -285,6 +371,118 @@ point* GeneralizationCurve::CheckInterSection(point point1, point point2,
 	return res;
 }
 
+point* GeneralizationCurve::CheckInterSectionMkl(point point1, point point2,
+	double_t radius, point pointCircle)
+{
+	double_t x1 = X(point1);
+	double_t x2 = X(point2);
+	double_t y1 = Y(point1);
+	double_t y2 = Y(point2);
+	double_t k = (x2 != x1) ? (-((y1 - y2) / (x2 - x1))) : 0;
+	double_t b = (x2 != x1) ? (-((x1 * y2 - x2 * y1) / (x2 - x1))) : 0;
+	double_t DArg = (2 * k * b - 2 * X(pointCircle) - 2 * Y(pointCircle) * k);
+	double_t DArg2 = DArg * DArg;
+	double_t D = (DArg2 -
+		(4 + 4 * k * k) * (b * b - radius * radius +
+			X(pointCircle) * X(pointCircle) +
+			Y(pointCircle) * Y(pointCircle) -
+			2 * Y(pointCircle) * b));
+	if (D < 0)
+	{
+		//System.Windows.Forms.MessageBox.Show("D (" + D.ToString() + ") < 0");
+		return nullptr;
+	}
+
+	double_t Arg;
+	vmdSqrt(1, &D, &Arg, 0);
+	double_t X1 = ((-(2 * k * b - 2 * x1 - 2 * y1 * k) - Arg) / (2 + 2 * k * k));
+	double_t X2 = ((-(2 * k * b - 2 * x1 - 2 * y1 * k) + Arg) / (2 + 2 * k * k));
+	double_t Y1 = k * X1 + b;
+	double_t Y2 = k * X2 + b;
+
+	// First root
+	bool first = false;
+	// 1st Quadrunt
+	if (((X1 >= X(point1)) && (X1 <= X(point2))) &&
+		((Y1 >= Y(point1)) && (Y1 <= Y(point2))))
+	{
+		//System.Windows.Forms.MessageBox.Show("1");
+		first = true;
+	}
+	// 4th Quadrunt
+	if (((X1 >= X(point1)) && (X1 <= X(point2))) &&
+		((Y1 <= Y(point1)) && (Y1 >= Y(point2))))
+	{
+		//System.Windows.Forms.MessageBox.Show("4");
+		first = true;
+	}
+	//3rd Quadrunt
+	if (((X1 <= X(point1)) && (X1 >= X(point2))) &&
+		((Y1 <= Y(point1)) && (Y1 >= Y(point2))))
+	{
+		//System.Windows.Forms.MessageBox.Show("3");
+		first = true;
+	}
+	//2st Quadrunt 
+	if (((X1 <= X(point1)) && (X1 >= X(point2))) &&
+		((Y1 >= Y(point1)) && (Y1 <= Y(point2))))
+	{
+		//System.Windows.Forms.MessageBox.Show("2");
+		first = true;
+	}
+
+	// Second root
+	bool second = false;
+	// 1st Quadrunt
+	if (((X2 >= X(point1)) && (X2 <= X(point2))) &&
+		((Y2 >= Y(point1)) && (Y2 <= Y(point2))))
+	{
+		//System.Windows.Forms.MessageBox.Show("1");
+		second = true;
+	}
+	// 4th Quadrunt
+	if (((X2 >= X(point1)) && (X2 <= X(point2))) &&
+		((Y2 <= Y(point1)) && (Y2 >= Y(point2))))
+	{
+		//System.Windows.Forms.MessageBox.Show("4");
+		second = true;
+	}
+	//3rd Quadrunt
+	if (((X2 <= X(point1)) && (X2 >= X(point2))) &&
+		((Y2 <= Y(point1)) && (Y2 >= Y(point2))))
+	{
+		//System.Windows.Forms.MessageBox.Show("3");
+		second = true;
+	}
+	//2st Quadrunt 
+	if (((X2 <= X(point1)) && (X2 >= X(point2))) &&
+		((Y2 >= Y(point1)) && (Y2 <= Y(point2))))
+	{
+		//System.Windows.Forms.MessageBox.Show("2");
+		second = true;
+	}
+
+	point *res = nullptr;
+
+	if (first)
+	{
+		res = new point;
+
+		X(*res) = X1;
+		Y(*res) = Y1;
+	}
+	if (second)
+	{
+		delete res;
+		res = new point;
+
+		X(*res) = X2;
+		Y(*res) = Y2;
+	}
+
+	return res;
+}
+
 void GeneralizationCurve::Adduction()
 {
 	Radius = ComputeRadius(ComputeAvarageDistance());
@@ -319,7 +517,7 @@ void GeneralizationCurve::Adduction()
 		X(pnt) = X(*Points)[i + k];
 		Y(pnt) = Y(*Points)[i + k];
 
-		res = CheckInterSection(adductionPoint, pnt, Radius, adductionPoint);
+		res = CheckInterSection[math_type](adductionPoint, pnt, Radius, adductionPoint);
 		if (nullptr == res)
 		{
 			k++;
@@ -356,7 +554,7 @@ void GeneralizationCurve::Adduction()
 	AdductionCount = count;
 }
 
-void GeneralizationCurve::Segmentation()
+void GeneralizationCurve::SegmentationMath()
 {
 	std::vector<double_t> Dist;
 	Dist.resize(AdductionCount - 1);
@@ -414,7 +612,7 @@ void GeneralizationCurve::Segmentation()
 	std::vector<double_t> FullRotationOfSegment;
 	FullRotationOfSegment.resize(CountOfSegments);
 
-	Integral—haract.resize(CountOfSegments);
+	Integral–°haract.resize(CountOfSegments);
 	for (uint32_t i = 0; i < CountOfSegments; i++)
 	{
 		uint32_t N = Ninit;
@@ -458,7 +656,7 @@ void GeneralizationCurve::Segmentation()
 				LocalMax[i]++;
 			}
 		}
-		Integral—haract[i] = FullRotationOfSegment[i] + f * LocalMax[i]; /* Mi */
+		Integral–°haract[i] = FullRotationOfSegment[i] + f * LocalMax[i]; /* Mi */
 	}
 
 	std::vector<uint32_t> MinSegmentCountPoint;
@@ -499,7 +697,7 @@ void GeneralizationCurve::Segmentation()
 		{
 			if (i + 1 != CountOfSegments)
 			{
-				if ((Integral—haract[i + 1] - Integral—haract[i] >= -10) && (Integral—haract[i + 1] - Integral—haract[i] <= 10))
+				if ((Integral–°haract[i + 1] - Integral–°haract[i] >= -10) && (Integral–°haract[i + 1] - Integral–°haract[i] <= 10))
 				{
 					for (uint32_t j = 0; j < SegmentCountPoints[i]; ++j)
 					{
@@ -564,6 +762,16 @@ void GeneralizationCurve::Segmentation()
 	delete[] InitSegments;
 }
 
+void GeneralizationCurve::SegmentationMkl()
+{
+
+}
+
+void GeneralizationCurve::Segmentation()
+{
+	return SegmentationInner[math_type]();
+}
+
 double_t GeneralizationCurve::func1(point *p1, point *p2, point *pnt)
 {
 	return ((Y(*p1) - Y(*p2)) * X(*pnt) + (X(*p1) - X(*p2)) * Y(*pnt) + (X(*p1) * Y(*p2) - X(*p2) * Y(*p1)));
@@ -590,7 +798,90 @@ bool GeneralizationCurve::IntersectionLineAndSquare(point *p1, point *p2, std::v
 	return false;
 }
 
-uint32_t GeneralizationCurve::ComputeQuadrics(uint32_t CurrentSegment, double_t dist)
+#define Grid(i,j) Grid[(i)* dimension[1] + (j)]
+
+uint32_t GeneralizationCurve::ComputeQuadricsMkl(uint32_t CurrentSegment, double_t dist)
+{
+	uint32_t CountOfSquare = 0;
+	// std::vector<std::vector<bool>> Grid;
+	MKL_LONG dimension[2] = { 10000, 10000 };
+	bool *Grid = (bool *)mkl_calloc(1, dimension[0] * dimension[1] * sizeof(*Grid),
+					64);
+
+	for (uint32_t k = 0; k < CountOfAdductionPointsInSegment[CurrentSegment] - 1; ++k)
+	{
+		double_t A = Y(AdductionPointsInSegment[CurrentSegment])[k] - Y(AdductionPointsInSegment[CurrentSegment])[k + 1];
+		double_t B = X(AdductionPointsInSegment[CurrentSegment])[k + 1] - X(AdductionPointsInSegment[CurrentSegment])[k];
+		double_t C = X(AdductionPointsInSegment[CurrentSegment])[k] * Y(AdductionPointsInSegment[CurrentSegment])[k + 1] -
+			X(AdductionPointsInSegment[CurrentSegment])[k + 1] * Y(AdductionPointsInSegment[CurrentSegment])[k];
+		double_t DistArg = A * A + B * B;
+		double_t Dist;
+		vmdSqrt(1, &DistArg, &Dist, 0);
+		Dist /= dist;
+	
+		uint32_t Left1 = (uint32_t)(X(AdductionPointsInSegment[CurrentSegment])[k] + Dist) + 1;
+		uint32_t Left2 = (uint32_t)(X(AdductionPointsInSegment[CurrentSegment])[k] - Dist) - 1;
+		uint32_t Right1 = (uint32_t)(Y(AdductionPointsInSegment[CurrentSegment])[k] + Dist) + 1;
+		uint32_t Right2 = (uint32_t)(Y(AdductionPointsInSegment[CurrentSegment])[k] - Dist) - 1;
+
+		for (uint32_t i = Left2; i < Left1; ++i)
+		{
+			for (uint32_t j = Right2; j < Right1; ++j)
+			{
+				std::vector<point> points;
+				points.resize(4);
+				X(points[0]) = i; Y(points[0]) = j;
+				X(points[1]) = i + 1; Y(points[1]) = j;
+				X(points[2]) = i + 1; Y(points[2]) = j + 1;
+				X(points[3]) = i; Y(points[3]) = j + 1;
+				point point_K, point_Kplus1;
+				X(point_K) = X(AdductionPointsInSegment[CurrentSegment])[k];
+				Y(point_K) = Y(AdductionPointsInSegment[CurrentSegment])[k];
+#if 0
+				polygon_t square;
+				square.outer().push_back(point_t(i, j));
+				square.outer().push_back(point_t(i + 1, j));
+				square.outer().push_back(point_t(i + 1, j + 1));
+				square.outer().push_back(point_t(i, j + 1));
+				square.outer().push_back(point_t(i, j));
+#endif
+#if 0
+				linestring_t line;
+				line.push_back(point_t{
+						X(AdductionPointsInSegment[CurrentSegment])[k],
+						Y(AdductionPointsInSegment[CurrentSegment])[k]
+				});
+				line.push_back(point_t{
+						X(AdductionPointsInSegment[CurrentSegment])[k + 1],
+						Y(AdductionPointsInSegment[CurrentSegment])[k + 1]
+				});
+#endif
+
+				X(point_Kplus1) = X(AdductionPointsInSegment[CurrentSegment])[k + 1];
+				Y(point_Kplus1) = Y(AdductionPointsInSegment[CurrentSegment])[k + 1];
+			
+				if (IntersectionLineAndSquare(&point_K, &point_Kplus1, &points))
+				{
+#if 0
+					multi_linestring_t output;
+					bool res = boost::geometry::intersection(line, square, output);
+#endif
+
+					if (!Grid(i, j))
+					{
+						CountOfSquare++;
+					}
+					Grid(i, j) = true;
+				}
+			}
+		}
+	}
+	
+	mkl_free(Grid);
+	return CountOfSquare;
+}
+
+uint32_t GeneralizationCurve::ComputeQuadricsMath(uint32_t CurrentSegment, double_t dist)
 {
 	uint32_t CountOfSquare = 0;
 	// std::vector<std::vector<bool>> Grid;
@@ -645,8 +936,8 @@ uint32_t GeneralizationCurve::ComputeQuadrics(uint32_t CurrentSegment, double_t 
 }
 
 void GeneralizationCurve::CopyArraysOfPoints(point *FromArray, point *ToArray,
-											 uint32_t Length, uint32_t StartIndexFrom,
-											 uint32_t StartIndexTo)
+					     uint32_t Length, uint32_t StartIndexFrom,
+					     uint32_t StartIndexTo)
 {
 	uint32_t k = StartIndexTo;
 
@@ -656,10 +947,23 @@ void GeneralizationCurve::CopyArraysOfPoints(point *FromArray, point *ToArray,
 	}
 }
 
-double_t GeneralizationCurve::ComputeDistBetweenPoints(point *A, point *B)
+double_t GeneralizationCurve::ComputeDistBetweenPointsMath(point *A, point *B)
 {
 	return sqrt(((X(*B) - X(*A)) * (X(*B) - X(*A))) +
 		((Y(*B) - Y(*A)) * (Y(*B) - Y(*A))));
+}
+
+double_t GeneralizationCurve::ComputeDistBetweenPointsMkl(point *A, point *B)
+{
+	double arg[2]{
+		(X(*B) - X(*A)),
+		(Y(*B) - Y(*A))
+	};
+	double argXY[2];
+	vmdPowx(2, arg, 2, argXY, 0);
+	double SumXYarg = argXY[0] + argXY[1];
+
+	return SumXYarg * SumXYarg;
 }
 
 double_t GeneralizationCurve::ComputeP(double_t DistAB, double_t DistBC, double_t DistAC)
@@ -674,9 +978,9 @@ double_t GeneralizationCurve::ComputeS(double_t p, double_t DistAB, double_t Dis
 
 double_t GeneralizationCurve::ComputeDistBetweenPointAndLine(point *A, point *B, point *C)
 {
-	double_t DistAB = ComputeDistBetweenPoints(A, B);
-	double_t DistBC = ComputeDistBetweenPoints(B, C);
-	double_t DistAC = ComputeDistBetweenPoints(A, C);
+	double_t DistAB = ComputeDistBetweenPoints[math_type](A, B);
+	double_t DistBC = ComputeDistBetweenPoints[math_type](B, C);
+	double_t DistAC = ComputeDistBetweenPoints[math_type](A, C);
 	double_t p = ComputeP(DistAB, DistBC, DistAC);
 	double_t S = ComputeS(p, DistAB, DistBC, DistAC);
 
@@ -812,7 +1116,7 @@ curve* GeneralizationCurve::SimplificationOfCurve(curve *initialPoints, uint32_t
 	return newPoints;
 }
 
-curve* GeneralizationCurve::SimplificationOfSegment(curve* AdductionPointsInSegment,
+curve* GeneralizationCurve::SimplificationOfSegmentMath(curve* AdductionPointsInSegment,
 	uint32_t *CountOfAdductionPointsInSegment, uint32_t i, uint32_t &CountOfPoints)
 {
 	uint32_t Len = *CountOfAdductionPointsInSegment;
@@ -834,7 +1138,36 @@ curve* GeneralizationCurve::SimplificationOfSegment(curve* AdductionPointsInSegm
 	return NewPoints;
 }
 
+curve* GeneralizationCurve::SimplificationOfSegmentMkl(curve* AdductionPointsInSegment,
+	uint32_t *CountOfAdductionPointsInSegment, uint32_t i, uint32_t &CountOfPoints)
+{
+	uint32_t Len = *CountOfAdductionPointsInSegment;
+	curve PointsInSegment;
+	X(PointsInSegment).resize(Len);
+	Y(PointsInSegment).resize(Len);
+
+	uint32_t k = 0;
+	for (uint32_t j = 0; j < Len; ++j)
+	{
+		X(PointsInSegment)[j] = X(*AdductionPointsInSegment)[k];
+		Y(PointsInSegment)[j] = Y(*AdductionPointsInSegment)[k];
+		k++;
+	}
+
+	double_t H;
+	vmdPowx(1, &M, 2 - AngularCoeffRegresLine[i], &H, 0);
+
+	curve* NewPoints = SimplificationOfCurve(&PointsInSegment, Len, H, CountOfPoints);
+
+	return NewPoints;
+}
+
 void GeneralizationCurve::Simplification()
+{
+	SimplificationInner[math_type]();
+}
+
+void GeneralizationCurve::SimplificationMath()
 {
 	uint32_t k = 8;
 	std::vector<std::vector<uint32_t>> NE;
@@ -846,15 +1179,13 @@ void GeneralizationCurve::Simplification()
 #pragma omp parallel for if ((parallelism_enabled) && (ResultSegmentCount >= 4))
 	for (int i = 0; i < ResultSegmentCount; ++i)
 	{
-		std::cout << omp_get_num_threads() << std::endl;
+		/*std::cout << omp_get_num_threads() << std::endl;*/
 		NE[i].resize(k);
 		Dbc[i].resize(k);
 		for (uint32_t j = 0; j < k; ++j)
 		{
-			NE[i][j] = (ComputeQuadrics(i, Radius * (j + 1)));
-			std::cout << "..." << omp_get_thread_num() << "...";
+			NE[i][j] = (ComputeQuadricsMath(i, Radius * (j + 1)));
 			Dbc[i][j] = (log10(NE[i][j]) / log10(1 / (Radius * (j + 1))));
-			std::cout << "[" << i << "][" << j << "]" << " " << NE[i][j] << "; " << Dbc[i][j] << std::endl;
 		}
 	}
 
@@ -896,14 +1227,107 @@ void GeneralizationCurve::Simplification()
 		AngularCoeffRegresLine[i] = LinearRegK[i];
 		uint32_t CountOfPoints = 0;
 
-		PointsAfterSimplification[i] = SimplificationOfSegment(&AdductionPointsInSegment[i],
+		PointsAfterSimplification[i] = SimplificationOfSegmentMath(&AdductionPointsInSegment[i],
 			&CountOfAdductionPointsInSegment[i], i, CountOfPoints);
 
 		CountOfPointsAfterSimplification[i] = CountOfPoints;
 		
 	}
 	for (uint32_t i = 0; i < ResultSegmentCount; ++i)
-		TotalCountOfPointsAfterSimplification += CountOfPointsAfterSimplification[i];}
+		TotalCountOfPointsAfterSimplification += CountOfPointsAfterSimplification[i];
+}
+
+void GeneralizationCurve::SimplificationMkl()
+{
+	const uint32_t k = 8;
+	//std::vector<std::vector<uint32_t>> NE;
+	//std::vector<std::vector<double_t>> Dbc; // Box-Counting
+	//NE.resize(ResultSegmentCount);
+	//Dbc.resize(ResultSegmentCount);
+	double_t** NE = (double_t **)mkl_calloc(ResultSegmentCount, sizeof(double_t *), 64);
+	double_t** Dbc = (double_t **)mkl_calloc(ResultSegmentCount, sizeof(double_t *), 64); // Box-Counting
+
+
+
+	double_t X = 0;
+	double_t X2 = 0;
+	std::vector<double_t> Y, XY, LinearRegK, LinearRegB;
+	Y.resize(ResultSegmentCount);
+	XY.resize(ResultSegmentCount);
+	LinearRegK.resize(ResultSegmentCount);
+	LinearRegB.resize(ResultSegmentCount);
+	AngularCoeffRegresLine.resize(ResultSegmentCount);
+
+	std::atomic_uint_fast32_t total_count_atomic{ 0 };
+
+	TotalCountOfPointsAfterSimplification = 0;
+	PointsAfterSimplification = new curve*[ResultSegmentCount];
+	CountOfPointsAfterSimplification.resize(ResultSegmentCount);
+
+	/*double_t *dist = (double_t *)mkl_calloc(k, sizeof(*dist), 64);*/
+	/*double_t *reverse_dist = (double_t *)mkl_calloc(k, sizeof(*reverse_dist), 64);*/
+	double_t *reverse_dist_log10 = (double_t *)mkl_calloc(k, sizeof(*reverse_dist_log10), 64);
+	double_t *dist2 = (double_t *)mkl_calloc(k, sizeof(*dist2), 64);
+	double_t dist[k] = { Radius * 1, Radius * 2, Radius * 3, Radius * 4,
+		Radius * 5, Radius * 6, Radius * 7, Radius * 8 };
+	double_t reverse_dist[k] = { (1 / dist[0]), (1 / dist[1]), (1 / dist[2]), (1 / dist[3]),
+		(1 / dist[4]), (1 / dist[5]), (1 / dist[6]), (1 / dist[7]) };
+	double_t E[k]{ 1, 1, 1, 1, 1, 1, 1, 1 };
+
+	vmdPowx(k, dist, 2, dist2, 0);
+	/* X += dist[0] + dist[1] + ... */
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 1, 1, k, 1, dist, k, E, 1, 0, &X, 1);
+	/* X2 += dist2[0] + dist2[1] + ... */
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 1, 1, k, 1, dist2, k, E, 1, 0, &X2, 1);
+
+	vmdLog10(k, (const double_t *)reverse_dist, reverse_dist_log10, 0);
+
+	mkl_free(dist2);
+	mkl_free(reverse_dist_log10);
+
+	X /= 10;
+	X2 /= 10;
+
+#pragma omp parallel for if ((this->parallelism_enabled) && (ResultSegmentCount >= 4))
+	for (int i = 0; i < ResultSegmentCount; ++i)
+	{
+		NE[i] = (double_t *)mkl_calloc(k, sizeof(double_t), 64);
+		Dbc[i] = (double_t *)mkl_calloc(k, sizeof(double_t), 64);
+
+		for (uint32_t j = 0; j < k; ++j)
+		{
+			double_t NElog10 = 0;
+
+			NE[i][j] = (double_t)(ComputeQuadricsMkl(i, dist[j]));
+			vmdLog10(1, (const double_t *)&NE[i][j], &NElog10, 0);
+			Dbc[i][j] = NElog10 / reverse_dist_log10[j];
+			Y[i] += Dbc[i][j];
+		}
+
+		Y[i] /= 10;
+		XY[i] = X * Y[i];
+		XY[i] /= 10;
+
+
+
+		LinearRegK[i] = (XY[i] * X * Y[i]) / (X2 * X * X);
+		LinearRegB[i] = (X2 * Y[i] - X * XY[i]) / (X2 - X * X);
+		AngularCoeffRegresLine[i] = LinearRegK[i];
+		uint32_t CountOfPoints = 0;
+
+		PointsAfterSimplification[i] = SimplificationOfSegmentMkl(&AdductionPointsInSegment[i],
+			&CountOfAdductionPointsInSegment[i], i, CountOfPoints);
+
+		CountOfPointsAfterSimplification[i] = CountOfPoints;
+		total_count_atomic.fetch_add(CountOfPointsAfterSimplification[i]);
+
+		mkl_free(NE[i]);
+		mkl_free(Dbc[i]);
+	}
+	TotalCountOfPointsAfterSimplification = total_count_atomic;
+	mkl_free(NE);
+	mkl_free(Dbc);
+}
 
 void GeneralizationCurve::Smoothing()
 {
