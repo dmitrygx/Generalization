@@ -5,6 +5,9 @@
 # include <omp.h>
 #endif
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 GeneralizationCurve::GeneralizationCurve()
 {
 	C = 0.5;
@@ -109,8 +112,8 @@ double_t GeneralizationCurve::ComputeDistances()
 	double_t sum = 0;
 	for (uint32_t i = 0; i < CountPoints - 1; i++)
 	{
-		Distance[i] = System::Math::Sqrt(System::Math::Pow((X(*Points)[i+1] - X(*Points)[i]), 2) +
-			System::Math::Pow((Y(*Points)[i + 1] - Y(*Points)[i]), 2));
+		Distance[i] = sqrt(((X(*Points)[i+1] - X(*Points)[i]) * (X(*Points)[i + 1] - X(*Points)[i])) +
+			(Y(*Points)[i + 1] - Y(*Points)[i]) * (Y(*Points)[i + 1] - Y(*Points)[i]));
 
 		sum += Distance[i];
 	}
@@ -173,7 +176,8 @@ point* GeneralizationCurve::CheckInterSection(point point1, point point2,
 	double_t y2 = Y(point2);
 	double_t k = (x2 != x1) ? (-((y1 - y2) / (x2 - x1))) : 0;
 	double_t b = (x2 != x1) ? (-((x1 * y2 - x2 * y1) / (x2 - x1))) : 0;
-	double_t D = (System::Math::Pow((2 * k * b - 2 * X(pointCircle) - 2 * Y(pointCircle) * k), 2) -
+	double_t D = (((2 * k * b - 2 * X(pointCircle) - 2 * Y(pointCircle) * k) *
+		(2 * k * b - 2 * X(pointCircle) - 2 * Y(pointCircle) * k)) -
 		(4 + 4 * k * k) * (b * b - radius * radius + 
 		X(pointCircle) * X(pointCircle) +
 		Y(pointCircle) * Y(pointCircle) -
@@ -184,8 +188,8 @@ point* GeneralizationCurve::CheckInterSection(point point1, point point2,
 		return nullptr;
 	}
 	
-	double_t X1 = ((-(2 * k * b - 2 * x1 - 2 * y1 * k) - System::Math::Sqrt(D)) / (2 + 2 * k * k));
-	double_t X2 = ((-(2 * k * b - 2 * x1 - 2 * y1 * k) + System::Math::Sqrt(D)) / (2 + 2 * k * k));
+	double_t X1 = ((-(2 * k * b - 2 * x1 - 2 * y1 * k) - sqrt(D)) / (2 + 2 * k * k));
+	double_t X2 = ((-(2 * k * b - 2 * x1 - 2 * y1 * k) + sqrt(D)) / (2 + 2 * k * k));
 	double_t Y1 = k * X1 + b;
 	double_t Y2 = k * X2 + b;
 
@@ -359,8 +363,10 @@ void GeneralizationCurve::Segmentation()
 
 	for (uint32_t i = 0; i < AdductionCount - 1; i++)
 	{
-		Dist[i] = System::Math::Sqrt(System::Math::Pow((X(*AdductionPoints)[i + 1] - X(*AdductionPoints)[i]), 2) +
-			System::Math::Pow((Y(*AdductionPoints)[i + 1] - Y(*AdductionPoints)[i]), 2));
+		Dist[i] = ((X(*AdductionPoints)[i + 1] - X(*AdductionPoints)[i]) *
+			(X(*AdductionPoints)[i + 1] - X(*AdductionPoints)[i])) +
+			((Y(*AdductionPoints)[i + 1] - Y(*AdductionPoints)[i]) *
+			(Y(*AdductionPoints)[i + 1] - Y(*AdductionPoints)[i]));
 	}
 	CountOfSegments = AdductionCount / Ninit;
 	bool flag = false;
@@ -422,7 +428,8 @@ void GeneralizationCurve::Segmentation()
 				(X(InitSegments[i])[j] - X(InitSegments[i])[j - 1]);
 			double_t topRight = (Y(InitSegments[i])[j + 1] - Y(InitSegments[i])[j]) *
 				(Y(InitSegments[i])[j] - Y(InitSegments[i])[j - 1]);
-			double_t botttom = System::Math::Pow(Dist[k++], 2);
+			double_t botttom = (Dist[k] * Dist[k]);
+			k++;
 			double_t Value = (topLeft + topRight) / botttom;
 			if (Value > 1)
 			{
@@ -432,10 +439,10 @@ void GeneralizationCurve::Segmentation()
 			{
 				Value = -1;
 			}
-			AngleOfRotation[i][j] = System::Math::Acos(Value);
+			AngleOfRotation[i][j] = acos(Value);
 			RotationOfSegment[i] += AngleOfRotation[i][j];
 		}
-		FullRotationOfSegment[i] = RotationOfSegment[i] / (2 * System::Math::PI); /* Wi */
+		FullRotationOfSegment[i] = RotationOfSegment[i] / (2 * M_PI); /* Wi */
 	}
 
 	LocalMax.resize(CountOfSegments); /* Ei */
@@ -596,7 +603,7 @@ uint32_t GeneralizationCurve::ComputeQuadrics(uint32_t CurrentSegment, double_t 
 		double_t B = X(AdductionPointsInSegment[CurrentSegment])[k + 1] - X(AdductionPointsInSegment[CurrentSegment])[k];
 		double_t C = X(AdductionPointsInSegment[CurrentSegment])[k] * Y(AdductionPointsInSegment[CurrentSegment])[k + 1] -
 			X(AdductionPointsInSegment[CurrentSegment])[k + 1] * Y(AdductionPointsInSegment[CurrentSegment])[k];
-		double_t Dist = System::Math::Sqrt(System::Math::Pow(A, 2) + System::Math::Pow(B, 2)) / dist;
+		double_t Dist = ((A * A) + (B * B)) / dist;
 		/*std::cout << "----- Left1 = " << (X(AdductionPointsInSegment[CurrentSegment])[k] + Dist) + 1 << " Left2 = " << (X(AdductionPointsInSegment[CurrentSegment])[k] - Dist) - 1
 			<< " Right1 = " << (Y(AdductionPointsInSegment[CurrentSegment])[k] + Dist) + 1 << " Right2 = " << (Y(AdductionPointsInSegment[CurrentSegment])[k] - Dist) - 1 << std::endl;*/
 		uint32_t Left1 = (uint32_t)(X(AdductionPointsInSegment[CurrentSegment])[k] + Dist) + 1;
@@ -651,8 +658,8 @@ void GeneralizationCurve::CopyArraysOfPoints(point *FromArray, point *ToArray,
 
 double_t GeneralizationCurve::ComputeDistBetweenPoints(point *A, point *B)
 {
-	return System::Math::Sqrt(System::Math::Pow((X(*B) - X(*A)), 2) +
-		System::Math::Pow((Y(*B) - Y(*A)), 2));
+	return sqrt(((X(*B) - X(*A)) * (X(*B) - X(*A))) +
+		((Y(*B) - Y(*A)) * (Y(*B) - Y(*A))));
 }
 
 double_t GeneralizationCurve::ComputeP(double_t DistAB, double_t DistBC, double_t DistAC)
@@ -662,7 +669,7 @@ double_t GeneralizationCurve::ComputeP(double_t DistAB, double_t DistBC, double_
 
 double_t GeneralizationCurve::ComputeS(double_t p, double_t DistAB, double_t DistBC, double_t DistAC)
 {
-	return System::Math::Sqrt((uint64_t)p * ((uint64_t)p - (uint64_t)DistAB) * ((uint64_t)p - (uint64_t)DistBC) * ((uint64_t)p - (uint64_t)DistAC));
+	return sqrt((uint64_t)p * ((uint64_t)p - (uint64_t)DistAB) * ((uint64_t)p - (uint64_t)DistBC) * ((uint64_t)p - (uint64_t)DistAC));
 }
 
 double_t GeneralizationCurve::ComputeDistBetweenPointAndLine(point *A, point *B, point *C)
@@ -820,7 +827,7 @@ curve* GeneralizationCurve::SimplificationOfSegment(curve* AdductionPointsInSegm
 		Y(PointsInSegment)[j] = Y(*AdductionPointsInSegment)[k];
 		k++;
 	}
-	double_t H = System::Math::Pow(M, 2 - AngularCoeffRegresLine[i]);
+	double_t H = pow(M, 2 - AngularCoeffRegresLine[i]);
 
 	curve* NewPoints = SimplificationOfCurve(&PointsInSegment, Len, H, CountOfPoints);
 
@@ -846,7 +853,7 @@ void GeneralizationCurve::Simplification()
 		{
 			NE[i][j] = (ComputeQuadrics(i, Radius * (j + 1)));
 			std::cout << "..." << omp_get_thread_num() << "...";
-			Dbc[i][j] = (System::Math::Log10(NE[i][j]) / System::Math::Log10(1 / (Radius * (j + 1))));
+			Dbc[i][j] = (log10(NE[i][j]) / log10(1 / (Radius * (j + 1))));
 			std::cout << "[" << i << "][" << j << "]" << " " << NE[i][j] << "; " << Dbc[i][j] << std::endl;
 		}
 	}
@@ -863,7 +870,7 @@ void GeneralizationCurve::Simplification()
 	for (uint32_t i = 0; i < k; ++i)
 	{
 		X += (Radius * (i + 1));
-		X2 += System::Math::Pow((Radius * (i + 1)), 2);
+		X2 += ((Radius * (i + 1)) * (Radius * (i + 1)));
 	}
 
 	X /= 10;
@@ -884,8 +891,8 @@ void GeneralizationCurve::Simplification()
 		XY[i] = X * Y[i];
 		XY[i] /= 10;
 
-		LinearRegK[i] = (XY[i] * X * Y[i]) / (X2 * System::Math::Pow(X, 2));
-		LinearRegB[i] = (X2 * Y[i] - X * XY[i]) / (X2 - System::Math::Pow(X, 2));
+		LinearRegK[i] = (XY[i] * X * Y[i]) / (X2 * X * X);
+		LinearRegB[i] = (X2 * Y[i] - X * XY[i]) / (X2 - X * X);
 		AngularCoeffRegresLine[i] = LinearRegK[i];
 		uint32_t CountOfPoints = 0;
 
@@ -896,8 +903,7 @@ void GeneralizationCurve::Simplification()
 		
 	}
 	for (uint32_t i = 0; i < ResultSegmentCount; ++i)
-		TotalCountOfPointsAfterSimplification += CountOfPointsAfterSimplification[i];
-}
+		TotalCountOfPointsAfterSimplification += CountOfPointsAfterSimplification[i];}
 
 void GeneralizationCurve::Smoothing()
 {

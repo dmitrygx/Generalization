@@ -731,7 +731,7 @@ void GeneralizationServer::handle_request(http_request request,
 
 		uint32_t countOfSmoothSegm;
 		std::vector<uint32_t> *countOfPointsInSmoothSegm = NULL;
-		curve** segmented_curve = requested_curve->GetSimplifiedCurve(countOfSmoothSegm,
+		curve** segmented_curve = requested_curve->GetSmoothedCurve(countOfSmoothSegm,
 			&countOfPointsInSmoothSegm);
 		root[L"count_segments"] = countOfSmoothSegm;
 		for (size_t i = 0; i < countOfSmoothSegm; i++)
