@@ -3,11 +3,11 @@
 #include "Generalization_ProgramOpt.h"
 #include "Windows.h"
 #include "tchar.h"
-#include "GeneralizationDataBase.h"
+//#include "GeneralizationDataBase.h"
 
 using namespace std;
 
-static GeneralizationDataBase GenDataBase;
+//static GeneralizationDataBase GenDataBase;
 
 int main(int argc, char* argv[])
 {
@@ -24,9 +24,9 @@ int main(int argc, char* argv[])
 	/*LPTSTR fileName = _tcsdup(TEXT("file.txt"));*/
 	/*CreateFile(fileName, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);*/
 
-	GenDataBase.setFileName(programOpt->GetDataBase());
+	//GenDataBase.setFileName(programOpt->GetDataBase());
 
-	GenDataBase.GetDataBaseObjectCount(count);
+	//GenDataBase.GetDataBaseObjectCount(count);
 
 	cout << "Count of Objects in DB = " << count << endl;
 }

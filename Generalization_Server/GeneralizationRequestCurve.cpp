@@ -1,24 +1,15 @@
 #include "GeneralizationRequestCurve.h"
 #include <ctime>
+#include "GeneralizationLogging.h"
 
-#define StartTime(start)	\
-	(start) = std::clock();
-
-#define StopTime(start, duration)	\
-	(duration) = (std::clock() - (start)) / (double)CLOCKS_PER_SEC;
-
-#define VerboseTime(duration)				\
-if (GetVerbose())							\
-{											\
-	cout << (duration) << " sec" << endl;	\
-}
 
 void GeneralizationRequestCurve::addMemberFunction(pair<State_t, Event_t> forPair, callBackFunction methodName)
 {
 	matrix[forPair] = methodName;
 }
 
-GeneralizationRequestCurve::GeneralizationRequestCurve()
+GeneralizationRequestCurve::GeneralizationRequestCurve() :
+	GeneralizationCurve(0.5, 500, 50, 5, 1000, 0)
 {
 	state = State_t::UNITIALIZED;
 
@@ -27,15 +18,16 @@ GeneralizationRequestCurve::GeneralizationRequestCurve()
 
 GeneralizationRequestCurve::GeneralizationRequestCurve(
 	double_t C_, uint32_t Np_, uint32_t Ns_,
-	double_t f_, uint32_t Ninit_) :
-	GeneralizationCurve(C_, Np_, Ns_, f_, Ninit_)
+	double_t f_, uint32_t Ninit_, int parallelism) :
+	GeneralizationCurve(C_, Np_, Ns_, f_, Ninit_, parallelism)
 {
 	state = State_t::UNITIALIZED;
 
 	Initialize();
 }
 
-GeneralizationRequestCurve::GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve)
+GeneralizationRequestCurve::GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve) :
+	GeneralizationCurve(0.5, 500, 50, 5, 1000, 0)
 {
 	state = State_t::UNITIALIZED;
 	Curve = newCurve;
@@ -46,8 +38,8 @@ GeneralizationRequestCurve::GeneralizationRequestCurve(uint32_t newCountOfPoints
 
 GeneralizationRequestCurve::GeneralizationRequestCurve(uint32_t newCountOfPoints, curve *newCurve,
 	double_t C_, uint32_t Np_, uint32_t Ns_,
-	double_t f_, uint32_t Ninit_) :
-	GeneralizationCurve(C_, Np_, Ns_, f_, Ninit_)
+	double_t f_, uint32_t Ninit_, int parallelism) :
+	GeneralizationCurve(C_, Np_, Ns_, f_, Ninit_, parallelism)
 {
 	state = State_t::UNITIALIZED;
 	Curve = newCurve;
@@ -82,12 +74,12 @@ void GeneralizationRequestCurve::Initialize()
 			std::cout << "Error: Count of points = " << countOfPoints << endl;
 			return;
 		}
-
-		std::clock_t start; double duration = 0;
-		StartTime(start);
+		timer.total_time = new cpu_timer;
+		StartTime(time);
 		this->Adduction();
-		StopTime(duration, start);
-		VerboseTime(duration);
+		StopTime(time, timer, adduction);
+		PauseTime(*timer.total_time);
+		VerboseTime(timer, adduction);
 
 		state = State_t::ADDUCTED;
 	}
@@ -102,7 +94,12 @@ void GeneralizationRequestCurve::Initialize()
 			std::cout << "Error: Count of points = " << countOfPoints << endl;
 			return;
 		}
+		ResumeTime(*timer.total_time);
+		StartTime(time);
 		this->Segmentation();
+		StopTime(time, timer, segmentation);
+		PauseTime(*timer.total_time);
+		VerboseTime(timer, segmentation);
 
 		state = State_t::SEGMENTED;
 	}
@@ -117,7 +114,12 @@ void GeneralizationRequestCurve::Initialize()
 			std::cout << "Error: Count of points = " << countOfPoints << endl;
 			return;
 		}
+		ResumeTime(*timer.total_time);
+		StartTime(time);
 		this->Simplification();
+		StopTime(time, timer, simplification);
+		PauseTime(*timer.total_time);
+		VerboseTime(timer, simplification);
 
 		state = State_t::SIMPLIFIED;
 	}
@@ -132,7 +134,12 @@ void GeneralizationRequestCurve::Initialize()
 			std::cout << "Error: Count of points = " << countOfPoints << endl;
 			return;
 		}
+		ResumeTime(*timer.total_time);
+		StartTime(time);
 		this->Smoothing();
+		StopTime(time, timer, smoothing);
+		StopTime(*timer.total_time, timer, total);
+		VerboseTime(timer, smoothing);
 
 		state = State_t::SMOOTHED;
 	}

@@ -14,6 +14,8 @@
 class GeneralizationCurve
 {
 private:
+	bool use_mkl;
+	bool parallelism_enabled;
 	double_t C;
 	uint32_t Ninit;
 	uint32_t Np;
@@ -58,6 +60,7 @@ private:
 		double_t radius, point pointCircle);
 	double_t func1(point *p1, point *p2, point *pnt);
 	bool IntersectionLineAndSquare(point *p1, point *p2, std::vector<point> *points);
+	uint32_t OldComputeQuadrics(uint32_t CurrentSegment, double_t dist);
 	uint32_t ComputeQuadrics(uint32_t CurrentSegment, double_t dist);
 	void CopyArraysOfPoints(point *FromArray, point *ToArray, uint32_t Length,
 		uint32_t StartIndexFrom, uint32_t StartIndexTo);
@@ -71,8 +74,40 @@ private:
 		uint32_t *CountOfAdductionPointsInSegment, uint32_t i, uint32_t &CountOfPoints);
 public:
 	GeneralizationCurve();
-	GeneralizationCurve(double_t C_, uint32_t Np_,
-		uint32_t Ns_, double_t f_, uint32_t Ninit_);
+	GeneralizationCurve(double_t C_ = 0.5, uint32_t Np_ = 500,
+		uint32_t Ns_ = 50, double_t f_ = 5, uint32_t Ninit_ = 1000,
+		int parallelism = 0);
+
+	/* Setters */
+	void SetUseMkl(bool use)
+	{
+		use_mkl = use;
+	}
+	void SetUseOpenMP(bool use)
+	{
+		parallelism_enabled = use;
+	}
+	void SetParamC(double C_)
+	{
+		C = C_;
+	}
+	void SetParamNp(uint32_t Np_)
+	{
+		Np = Np_;
+	}
+	void SetParamNinit(uint32_t Ninit_)
+	{
+		Ninit = Ninit_;
+	}
+	void SetParamf(double f_)
+	{
+		f = f_;
+	}
+	void SetParamNs(uint32_t Ns_)
+	{
+		Ns = Ns_;
+	}
+	/* ~Setters */
 
 	/* Getters */
 	curve* GetSouceCurve();
@@ -87,8 +122,10 @@ public:
 
 	void BuildCurve(uint32_t countOfPoints, curve *newCurve);
 	void SetValueOfScale(double_t m);
+	void SetParallelismMode(bool mode);
 	void Adduction();
 	void Segmentation();
+	void OldSimplification();
 	void Simplification();
 	void Smoothing();
 	virtual ~GeneralizationCurve();

@@ -352,5 +352,7 @@ public:
 	BaseReadObject _BaseReadObject;
 	BaseObjectCount _BaseObjectCount;
 	BaseCodeStr _BaseCodeStr;
-	/*_BasePrintObjectToFile BasePrintObjectToFile;*/
+	BaseWriteObject _BaseWriteObject;
+	BaseDeleteObject _BaseDeleteObject;
+	BaseUpdateMetric _BaseUpdateMetric;
 };

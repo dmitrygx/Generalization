@@ -1,9 +1,14 @@
 #include "GeneralizationServer.h"
 #include "Wininet.h"
+#ifdef _OPENMP
+#include "omp.h"
+#endif
 
 GeneralizationServer::GeneralizationServer(string Path, string Type,
 	double C, uint32_t Np, uint32_t Ns, double f, uint32_t Ninit)
 {
+	parallel_algortihm = false;
+
 	AlgorithmParams algParams;
 	algParams.C = C;
 	algParams.Np = Np;
@@ -18,6 +23,8 @@ GeneralizationServer::GeneralizationServer(string Path, string Type,
 //http_listener(L"http://localhost/generalization_server"))
 GeneralizationServer::GeneralizationServer(const http::uri& url) : listener(http_listener(url))
 {
+	parallel_algortihm = false;
+
 	listener.support(methods::GET, std::bind(&GeneralizationServer::handle_get,
 						 this,
 						 std::tr1::placeholders::_1));
@@ -43,6 +50,7 @@ GeneralizationServer::GeneralizationServer(const http::uri& url) : listener(http
 	allowedPath[static_cast<string_t>(U("segmentation_curve"))] = SEGMENTATION_CURVE;
 	allowedPath[static_cast<string_t>(U("simplification_curve"))] = SIMPLIFICATION_CURVE;
 	allowedPath[static_cast<string_t>(U("smoothing_curve"))] = SMOOTHING_CURVE;
+	allowedPath[static_cast<string_t>(U("save_curve"))] = SAVE_CURVE;
 
 	running = true;
 	/*try
@@ -144,7 +152,7 @@ void GeneralizationServer::AllocateMemCurves(size_t Count, double_t C_, uint32_t
 	void* raw_memory = operator new[](Count * sizeof(GeneralizationRequestCurve));
 	Curves = static_cast<GeneralizationRequestCurve*>(raw_memory);
 	for (size_t i = 0; i < Count; ++i) {
-		new(&Curves[i])GeneralizationRequestCurve(C_, Np_, Ns_, f_, Ninit_);
+		new(&Curves[i])GeneralizationRequestCurve(C_, Np_, Ns_, f_, Ninit_, parallel_algortihm);
 	}
 }
 
@@ -156,7 +164,9 @@ void GeneralizationServer::HandleAllCurves(string type)
 	size_t curve_number = (type == "File") ?
 		MethodInvoke(File, GetNumberOfCurves()) :
 		MethodInvoke(DataBase, GetNumberOfCurves());
-	for (size_t i = 0; i < curve_number; i++)
+
+#pragma omp parallel for if ((parallel_algortihm) && (curve_number >= 4))
+	for (int64_t i = 0; i < curve_number; i++)
 	{
 		GeneralizationRequestCurve *requested_curve = &Curves[i];
 		uint32_t size = X(CurvesMap[i]).size();
@@ -165,16 +175,61 @@ void GeneralizationServer::HandleAllCurves(string type)
 		if (size != 0)
 		{
 			requested_curve->DispatchEvent(Event_t::INITIALIZE);
-			cout << "Done" << endl;
 			requested_curve->DispatchEvent(Event_t::ADDUCTION);
-			cout << "Done" << endl;
 			requested_curve->DispatchEvent(Event_t::SEGMENTATION);
-			cout << "Done" << endl;
 			requested_curve->DispatchEvent(Event_t::SIMPLIFICATION);
-			cout << "Done" << endl;
 			requested_curve->DispatchEvent(Event_t::SMOOTHING);
 		}
 	}
+
+	for (int64_t i = 0; i < curve_number; i++)
+	{
+		GeneralizationRequestCurve *requested_curve = &Curves[i];
+		uint32_t size = X(CurvesMap[i]).size();
+		if ((update_db) && (type == "DataBase") && (size != 0))
+		{
+			GenDataBase.UpdateDataBaseObject_UpdateMetric(requested_curve);
+		}
+
+		if (size != 0)
+			requested_curve->OutputResults();
+	}
+}
+
+int GeneralizationServer::HandleCurve(string type, string Code, long Number)
+{
+	size_t curve_number = (type == "File") ?
+		MethodInvoke(File, GetNumberOfCurves()) :
+		MethodInvoke(DataBase, GetNumberOfCurves());
+	int found = -1;
+	/* if ((parallel_algortihm) && (curve_number >= 4))*/
+//#pragma omp parallel for
+	for (int64_t i = 0; (i < curve_number) && (found == -1); i++)
+	{
+		GeneralizationRequestCurve *requested_curve = &Curves[i];
+		if ((requested_curve->GetDBCode() == Code) &&
+			(requested_curve->GetDBNumber() == Number))
+		{
+			uint32_t size = X(CurvesMap[i]).size();
+			curve *reqCurve = &CurvesMap[i];
+			requested_curve->SetCurve(size, reqCurve);
+			if (size != 0)
+			{
+				requested_curve->DispatchEvent(Event_t::INITIALIZE);
+				requested_curve->DispatchEvent(Event_t::ADDUCTION);
+				requested_curve->DispatchEvent(Event_t::SEGMENTATION);
+				requested_curve->DispatchEvent(Event_t::SIMPLIFICATION);
+				requested_curve->DispatchEvent(Event_t::SMOOTHING);
+				if ((update_db) && (type == "DataBase"))
+				{
+					GenDataBase.UpdateDataBaseObject(requested_curve);
+				}
+				requested_curve->OutputResults();
+			}
+			found = 0;
+		}
+	}
+	return found;
 }
 
 int GeneralizationServer::InitializeCurves(string_t storage_type, string_t storage_path,
@@ -184,6 +239,11 @@ int GeneralizationServer::InitializeCurves(string_t storage_type, string_t stora
 
 	if (storage_type == U("File"))
 	{
+		std::string fileName = utility::conversions::to_utf8string(storage_path);
+		std::string *resultFileName = UpdateFilePath(fileName);
+
+		GenFile.SetPath(*resultFileName);
+
 		res = GenFile.ParseAllDataInFile();
 		if (res != 0)
 			return res;
@@ -194,6 +254,9 @@ int GeneralizationServer::InitializeCurves(string_t storage_type, string_t stora
 		for (uint32_t i = 0; i < GenFile.GetNumberOfCurves(); i++)
 		{
 			Curves[i].SetCurve(X(CurvesMap[i]).size(), &CurvesMap[i]);
+			Curves[i].SetDBInfo("0", i);
+			Curves[i].SetUseOpenMP(algParams->OpenMP);
+			Curves[i].SetUseMkl(algParams->IntelMKL);
 		}
 
 		res = 0;
@@ -222,6 +285,8 @@ int GeneralizationServer::InitializeCurves(string_t storage_type, string_t stora
 		{
 			Curves[i].SetCurve(X(CurvesMap[i]).size(), &CurvesMap[i]);
 			Curves[i].SetDBInfo(GenDataBase.GetDBCode(i), GenDataBase.GetDBNumber(i));
+			Curves[i].SetUseOpenMP(algParams->OpenMP);
+			Curves[i].SetUseMkl(algParams->IntelMKL);
 		}
 
 		res = 0;
@@ -229,30 +294,6 @@ int GeneralizationServer::InitializeCurves(string_t storage_type, string_t stora
 
 	return res;
 }
-
-//std::wstring DecodeURL(const std::wstring &a_URL)
-//{
-//	DWORD size = 0;
-//	if (!InternetCanonicalizeUrlW(a_URL.c_str(), NULL, &size, ICU_DECODE | ICU_NO_ENCODE))
-//	{
-//		if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
-//		{
-//			std::wstring buffer;
-//			buffer.resize(size);
-//			if (InternetCanonicalizeUrlW(a_URL.c_str(), (LPWSTR)(void *)buffer.c_str(),
-//				&size, ICU_DECODE | ICU_NO_ENCODE))
-//			{
-//				std::wstring utf8;
-//				utf8.resize(buffer.size());
-//				for (size_t i = 1; i <= buffer.size(); ++i)
-//					utf8[i] = (char)buffer[i];
-//				return utf8;
-//			}
-//		}
-//	}
-//
-//	return NULL;
-//}
 
 void GeneralizationServer::handle_request(http_request request,
 	function<void(json::value &, json::value &)> action)
@@ -297,19 +338,23 @@ void GeneralizationServer::handle_request(http_request request,
 	{
 		auto found_storage_type = http_get_vars.find(U("type"));
 		auto found_storage_path = http_get_vars.find(U("path"));
+		auto found_alg_params_OpenMP = http_get_vars.find(U("params_OpenMP"));
 		auto found_alg_params_C = http_get_vars.find(U("params_C"));
 		auto found_alg_params_Np = http_get_vars.find(U("params_Np"));
 		auto found_alg_params_Ns = http_get_vars.find(U("params_Ns"));
 		auto found_alg_params_f = http_get_vars.find(U("params_f"));
 		auto found_alg_params_Ninit = http_get_vars.find(U("params_Ninit"));
+		auto found_alg_params_IntelMKL = http_get_vars.find(U("params_IntelMKL"));
 
-		if ((found_storage_type == end(http_get_vars))	||
-		    (found_storage_path == end(http_get_vars))	||
-		    (found_alg_params_C == end(http_get_vars))	||
-		    (found_alg_params_Np == end(http_get_vars))	||
-		    (found_alg_params_Ns == end(http_get_vars))	||
-		    (found_alg_params_f == end(http_get_vars))	||
-		    (found_alg_params_Ninit == end(http_get_vars))) {
+		if ((found_storage_type == end(http_get_vars)) ||
+		    (found_storage_path == end(http_get_vars)) ||
+		    (found_alg_params_C == end(http_get_vars)) ||
+		    (found_alg_params_Np == end(http_get_vars)) ||
+		    (found_alg_params_Ns == end(http_get_vars)) ||
+		    (found_alg_params_f == end(http_get_vars)) ||
+		    (found_alg_params_Ninit == end(http_get_vars)) ||
+		    (found_alg_params_OpenMP == end(http_get_vars)) ||
+		    (found_alg_params_IntelMKL == end(http_get_vars))) {
 			auto err = U("Request received with get var \"type\" "
 				     "or \"path\" omitted from query.");
 			wcout << err << endl;
@@ -326,6 +371,14 @@ void GeneralizationServer::handle_request(http_request request,
 		wstring params_Ns = found_alg_params_Ns->second;
 		wstring params_f = found_alg_params_f->second;
 		wstring params_Ninit = found_alg_params_Ninit->second;
+		wstring params_OpenMP = found_alg_params_OpenMP->second;
+		wstring params_IntelMKL = found_alg_params_IntelMKL->second;
+
+		std::function<wstring(wstring, const char*, const char*)> replacer =
+			[](wstring str, const char* from, const char* to) {
+				boost::replace_all(str, from, to);
+				return str;
+			};
 
 
 		boost::replace_all(params_C, "%2C", ",");
@@ -333,12 +386,8 @@ void GeneralizationServer::handle_request(http_request request,
 		boost::replace_all(params_Ns, "%2C", ",");
 		boost::replace_all(params_f, "%2C", ",");
 		boost::replace_all(params_Ninit, "%2C", ",");
-
-		std::function<wstring(wstring, const char*, const char*)> replacer =
-			[](wstring str, const char* from, const char* to) {
-				boost::replace_all(str, from, to);
-				return str;
-			};
+		boost::replace_all(params_OpenMP, "%2C", ",");
+		boost::replace_all(params_IntelMKL, "%2C", ",");
 
 		AlgorithmParams algParams;
 		algParams.C = (double) std::stod(replacer(
@@ -351,6 +400,10 @@ void GeneralizationServer::handle_request(http_request request,
 			replacer(params_f, "%2C", ","), ",", "."));
 		algParams.Ninit = (uint32_t) std::stoi(replacer(
 			replacer(params_Ninit, "%2C", ","), ",", "."));
+		algParams.OpenMP = (int)std::stoi(replacer(replacer(
+			params_OpenMP, "%2C", ","), ",", "."));
+		algParams.IntelMKL = (int)std::stoi(replacer(replacer(
+			params_IntelMKL, "%2C", ","), ",", "."));
 
 		cout << "Received algorithm's parameters:" << endl <<
 			"C = " << algParams.C << " (" <<
@@ -362,10 +415,17 @@ void GeneralizationServer::handle_request(http_request request,
 			"f = " << algParams.f << " (" <<
 			utility::conversions::to_utf8string(params_f) << ")" << endl <<
 			"Ninit = " << algParams.Ninit << " (" <<
-			utility::conversions::to_utf8string(params_Ninit) << ")" << endl;
+			utility::conversions::to_utf8string(params_Ninit) << ")" << endl <<
+			"OpenMP = " << algParams.OpenMP << " (" <<
+			utility::conversions::to_utf8string(params_OpenMP) << ")" << endl <<
+			"OpenMP = " << algParams.IntelMKL << " (" <<
+			utility::conversions::to_utf8string(params_IntelMKL) << ")" << endl;
 
 		wcout << U("Received storage: ") << storage_type << endl;
 		InitializeCurves(storage_type, storage_path, &algParams);
+#ifdef _OPENMP
+		this->SetParallelismMode(algParams.OpenMP);
+#endif
 
 		auto array = answer.array();
 		json::value root;
@@ -401,7 +461,18 @@ void GeneralizationServer::handle_request(http_request request,
 	{
 		auto found_curve = http_get_vars.find(U("curve_number"));
 
-		if (found_curve == end(http_get_vars)) {
+		auto found_alg_params_C = http_get_vars.find(U("params_C"));
+		auto found_alg_params_Np = http_get_vars.find(U("params_Np"));
+		auto found_alg_params_Ns = http_get_vars.find(U("params_Ns"));
+		auto found_alg_params_f = http_get_vars.find(U("params_f"));
+		auto found_alg_params_Ninit = http_get_vars.find(U("params_Ninit"));
+
+		if ((found_alg_params_C == end(http_get_vars)) ||
+		    (found_alg_params_Np == end(http_get_vars)) ||
+		    (found_alg_params_Ns == end(http_get_vars)) ||
+		    (found_alg_params_f == end(http_get_vars)) ||
+		    (found_alg_params_Ninit == end(http_get_vars)) || 
+		    (found_curve == end(http_get_vars))) {
 			auto err = U("Request received with get var \"curve_number\" omitted from query.");
 			wcout << err << endl;
 			/* BAD */
@@ -409,13 +480,64 @@ void GeneralizationServer::handle_request(http_request request,
 			return;
 		}
 
+		wstring params_C = found_alg_params_C->second;
+		wstring params_Np = found_alg_params_Np->second;
+		wstring params_Ns = found_alg_params_Ns->second;
+		wstring params_f = found_alg_params_f->second;
+		wstring params_Ninit = found_alg_params_Ninit->second;
+
+		boost::replace_all(params_C, "%2C", ",");
+		boost::replace_all(params_Np, "%2C", ",");
+		boost::replace_all(params_Ns, "%2C", ",");
+		boost::replace_all(params_f, "%2C", ",");
+		boost::replace_all(params_Ninit, "%2C", ",");
+
+		std::function<wstring(wstring, const char*, const char*)> replacer =
+			[](wstring str, const char* from, const char* to) {
+			boost::replace_all(str, from, to);
+			return str;
+		};
+
+		AlgorithmParams algParams;
+		algParams.C = (double)std::stod(replacer(
+			replacer(params_C, "%2C", ","), ",", "."));
+		algParams.Np = (uint32_t)std::stoi(replacer(
+			replacer(params_Np, "%2C", ","), ",", "."));
+		algParams.Ns = (uint32_t)std::stoi(replacer(
+			replacer(params_Ns, "%2C", ","), ",", "."));
+		algParams.f = (double)std::stod(replacer(
+			replacer(params_f, "%2C", ","), ",", "."));
+		algParams.Ninit = (uint32_t)std::stoi(replacer(
+			replacer(params_Ninit, "%2C", ","), ",", "."));
+
 		auto request_curve = found_curve->second;
-		wcout << U("Received request SOURCE_CURVE: ") << request_curve << endl;
-		
 		uint32_t requested_curve_number = std::stoi(request_curve);
 
+		wcout << U("Received request SOURCE_CURVE: ") << request_curve << " ("
+			<< requested_curve_number << ")" << endl;
+
+
+
+		cout << "Received algorithm's parameters:" << endl <<
+			"C = " << algParams.C << " (" <<
+			utility::conversions::to_utf8string(params_C) << ")" << endl <<
+			"Np = " << algParams.Np << " (" <<
+			utility::conversions::to_utf8string(params_Np) << ")" << endl <<
+			"Ns = " << algParams.Ns << " (" <<
+			utility::conversions::to_utf8string(params_Ns) << ")" << endl <<
+			"f = " << algParams.f << " (" <<
+			utility::conversions::to_utf8string(params_f) << ")" << endl <<
+			"Ninit = " << algParams.Ninit << " (" <<
+			utility::conversions::to_utf8string(params_Ninit) << ")" << endl;
 
 		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
+
+		requested_curve->SetParamC(algParams.C);
+		requested_curve->SetParamNp(algParams.Np);
+		requested_curve->SetParamNinit(algParams.Ninit);
+		requested_curve->SetParamf(algParams.f);
+		requested_curve->SetParamNs(algParams.Ns);
+
 		uint32_t size = X(CurvesMap[requested_curve_number]).size();
 		curve *reqCurve = &CurvesMap[requested_curve_number];
 		requested_curve->SetCurve(size, reqCurve);
@@ -457,8 +579,9 @@ void GeneralizationServer::handle_request(http_request request,
 		}
 
 		auto request_curve = found_curve->second;
-		wcout << U("Received request ADDUCTION_CURVE: ") << request_curve << endl;
-		uint32_t requested_curve_number = atoi((char*)request_curve.c_str());
+		uint32_t requested_curve_number = std::stoi(request_curve);
+		wcout << U("Received request ADDUCTION_CURVE: ") << request_curve << " ("
+			<< requested_curve_number << ")" << endl;
 		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
 		requested_curve->DispatchEvent(Event_t::ADDUCTION);
 
@@ -500,8 +623,9 @@ void GeneralizationServer::handle_request(http_request request,
 		}
 
 		auto request_curve = found_curve->second;
-		wcout << U("Received request SEGMENTATION_CURVE: ") << request_curve << endl;
-		uint32_t requested_curve_number = atoi((char*)request_curve.c_str());
+		uint32_t requested_curve_number = std::stoi(request_curve);
+		wcout << U("Received request SEGMENTATION_CURVE: ") << request_curve << " ("
+			<< requested_curve_number << ")" << endl;
 		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
 		requested_curve->DispatchEvent(Event_t::SEGMENTATION);
 
@@ -553,8 +677,9 @@ void GeneralizationServer::handle_request(http_request request,
 		}
 
 		auto request_curve = found_curve->second;
-		wcout << U("Received request SIMPLIFICATION_CURVE: ") << request_curve << endl;
-		uint32_t requested_curve_number = atoi((char*)request_curve.c_str());
+		uint32_t requested_curve_number = std::stoi(request_curve);
+		wcout << U("Received request SIMPLIFICATION_CURVE: ") << request_curve << " ("
+			<< requested_curve_number << ")" << endl;
 		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
 		requested_curve->DispatchEvent(Event_t::SIMPLIFICATION);
 
@@ -576,8 +701,8 @@ void GeneralizationServer::handle_request(http_request request,
 				web::json::value x;
 				web::json::value y;
 
-				x = web::json::value::number(X((*segmented_curve)[i])[j]);
-				y = web::json::value::number(Y((*segmented_curve)[i])[j]);
+				x = web::json::value::number(X(*(segmented_curve)[i])[j]);
+				y = web::json::value::number(Y(*(segmented_curve)[i])[j]);
 
 				web::json::value pointXY;
 				pointXY[L"X"] = x;
@@ -606,8 +731,9 @@ void GeneralizationServer::handle_request(http_request request,
 		}
 
 		auto request_curve = found_curve->second;
-		wcout << U("Received request SMOOTHING_CURVE: ") << request_curve << endl;
-		uint32_t requested_curve_number = atoi((char*)request_curve.c_str());
+		uint32_t requested_curve_number = std::stoi(request_curve);
+		wcout << U("Received request SMOOTHING_CURVE: ") << request_curve << " ("
+			<< requested_curve_number << ")" << endl;
 		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
 		requested_curve->DispatchEvent(Event_t::SMOOTHING);
 
@@ -616,7 +742,7 @@ void GeneralizationServer::handle_request(http_request request,
 
 		uint32_t countOfSmoothSegm;
 		std::vector<uint32_t> *countOfPointsInSmoothSegm = NULL;
-		curve** segmented_curve = requested_curve->GetSimplifiedCurve(countOfSmoothSegm,
+		curve** segmented_curve = requested_curve->GetSmoothedCurve(countOfSmoothSegm,
 			&countOfPointsInSmoothSegm);
 		root[L"count_segments"] = countOfSmoothSegm;
 		for (size_t i = 0; i < countOfSmoothSegm; i++)
@@ -646,7 +772,31 @@ void GeneralizationServer::handle_request(http_request request,
 		request.reply(status_codes::OK, root);
 		return;
 	}
+	else if ((reqObj == SAVE_CURVE) && (initialized))
+	{
+		auto found_curve = http_get_vars.find(U("curve_number"));
+		int err;
 
+		if (found_curve == end(http_get_vars)) {
+			auto err = U("Request received with get var \"curve_number\" omitted from query.");
+			wcout << err << endl;
+			/* BAD */
+			request.reply(status_codes::BadRequest);
+			return;
+		}
+
+		auto request_curve = found_curve->second;
+		uint32_t requested_curve_number = std::stoi(request_curve);
+		wcout << U("Received request SAVE_CURVE: ") << request_curve << " ("
+			<< requested_curve_number << ")" << endl;
+		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
+
+		err = GenDataBase.UpdateDataBaseObject(requested_curve);
+		cout << "We are ready to reply" << endl;
+
+		request.reply((err != 0) ? status_codes::InternalError : status_codes::OK);
+		return;
+	}
 	/*std::cout << utility::conversions::to_utf8string(request.to_string()) << endl;*/
 
 	//request
@@ -687,7 +837,7 @@ void GeneralizationServer::handle_get(http_request request)
 			auto found_name = http_get_vars.find(U("/curve"));
 
 			if (found_name == end(http_get_vars)) {
-				auto err = U("Request received with get var \"request\" omitted from query.");
+				auto err = U("Request received with get var \"curve\" omitted from query.");
 				wcout << err << endl;
 				/* BAD */
 				return;
@@ -713,25 +863,22 @@ void GeneralizationServer::handle_post(http_request request)
 
 	handle_request(
 		request,
-		[](json::value & jvalue, json::value & answer)
+		[&](json::value & jvalue, json::value & answer)
 		{
-			//for (auto const & e : jvalue)
-			//{
-			//	if (e.second.is_string())
-			//	{
-			//		auto key = e.second.as_string();
+			auto http_get_vars = uri::split_query(request.request_uri().query());
+			wcout << "QUERY : " << endl;
+			wcout << request.request_uri().query() << endl;
+			auto found_name = http_get_vars.find(U("/curve"));
 
-			//		/*if (pos == dictionary.end())
-			//		{
-			//			answer.push_back(make_pair(json::value(key), json::value(L"<nil>")));
-			//		}
-			//		else
-			//		{
-			//			answer.push_back(make_pair(json::value(pos->first), json::value(pos->second)));
-			//		}*/
-			//	}
-			//}
-			wcout << jvalue.serialize() << endl;
+			if (found_name == end(http_get_vars)) {
+				auto err = U("Request received with get var \"curve\" omitted from query.");
+				wcout << err << endl;
+				/* BAD */
+				return;
+			}
+
+			auto request_name = found_name->second;
+			wcout << U("Received request: ") << request_name << endl;
 		});
 }
 
@@ -739,33 +886,25 @@ void GeneralizationServer::handle_put(http_request request)
 {
 	std::cout << "\nhandle PUT\n" << std::endl;
 
-	/*handle_request(
+	handle_request(
 		request,
-		[](json::value & jvalue, json::value::field_map & answer)
+		[&](json::value & jvalue, json::value & answer)
 	{
-		for (auto const & e : jvalue)
-		{
-			if (e.first.is_string() && e.second.is_string())
-			{
-				auto key = e.first.as_string();
-				auto value = e.second.as_string();
+		auto http_get_vars = uri::split_query(request.request_uri().query());
+		wcout << "QUERY : " << endl;
+		wcout << request.request_uri().query() << endl;
+		auto found_name = http_get_vars.find(U("/curve"));
 
-				if (dictionary.find(key) == dictionary.end())
-				{
-					TRACE_ACTION(L"added", key, value);
-					answer.push_back(make_pair(json::value(key), json::value(L"<put>")));
-				}
-				else
-				{
-					TRACE_ACTION(L"updated", key, value);
-					answer.push_back(make_pair(json::value(key), json::value(L"<updated>")));
-				}
-
-				dictionary[key] = value;
-			}
+		if (found_name == end(http_get_vars)) {
+			auto err = U("Request received with get var \"request\" omitted from query.");
+			wcout << err << endl;
+			/* BAD */
+			return;
 		}
-	}
-	);*/
+
+		auto request_name = found_name->second;
+		wcout << U("Received request: ") << request_name << endl;
+	});
 }
 
 void GeneralizationServer::handle_del(http_request request)

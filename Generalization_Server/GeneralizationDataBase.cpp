@@ -76,6 +76,234 @@ int GeneralizationDataBase::CloseDataBase(void)
 	return err;
 }
 
+void GeneralizationDataBase::ConvertFromStrDBCodeToInt(string s, BASE_INT *code)
+{
+	std::string delimiter = ".";
+	size_t pos = 0, i = 0;
+	std::string token;
+
+	memset(code, 0, sizeof(*code) * 10);
+
+	while ((pos = s.find(delimiter)) != std::string::npos) {
+		token = s.substr(0, pos);
+		code[i] = std::stoi(token);
+		s.erase(0, pos + delimiter.length());
+		i++;
+	}
+	code[i] = std::stoi(s);
+	i++;
+}
+
+int GeneralizationDataBase::UpdateDataBaseObject(GeneralizationRequestCurve *Curve)
+{
+	int err;
+
+	/*err = DeleteDataBaseObject(Curve);
+	if (err != 0)
+	{
+		wcout << "DeleteDataBaseObject failed: " << endl;
+		return -1;
+	}*/
+
+	err = WriteDataBaseObject(Curve);
+	if (err != 0)
+	{
+		wcout << "WriteDataBaseObject failed: " << endl;
+		return -1;
+	}
+
+	return err;
+}
+
+int GeneralizationDataBase::DeleteDataBaseObject(GeneralizationRequestCurve *Curve)
+{
+	int err;
+	long Number;
+	BASE_INT Code[10];
+
+	err = OpenDataBase();
+	if (err != 0)
+	{
+		wcout << "OpenDataBase failed: " << endl;
+		return -1;
+	}
+
+	ConvertFromStrDBCodeToInt(Curve->GetDBCode(), Code);
+	Number = Curve->GetDBNumber();
+
+	err = DataBaseFunc->_BaseDeleteObject(db.dataBase, Code, Number, 1);
+	if (err != 0)
+	{
+		wcout << "BaseDeleteObject failed: " << endl;
+		return -1;
+	}
+
+	err = CloseDataBase();
+	if (err != 0)
+	{
+		wcout << "CloseDataBase failed: " << endl;
+		return -1;
+	}
+
+	return err;
+}
+
+int GeneralizationDataBase::WriteDataBaseObject(GeneralizationRequestCurve *Curve)
+{
+	int err;
+	GBASE_OBJECT object;
+	uint32_t countOfSmoothSegm;
+	std::vector<uint32_t> *countOfPointInSmoothSegm;
+	curve** SmoothedCurve;
+	curve TotalCurve;
+
+	err = OpenDataBase();
+	if (err != 0)
+	{
+		wcout << "OpenDataBase failed: " << endl;
+		return -1;
+	}
+
+	memset(&object, 0, sizeof(object));
+	SmoothedCurve = Curve->GetSmoothedCurve(countOfSmoothSegm, &countOfPointInSmoothSegm);
+
+	for (int64_t i = 0; i < countOfSmoothSegm; i++)
+	{
+		object.qMet += (*countOfPointInSmoothSegm)[i];
+		for (int64_t j = 0; j < (*countOfPointInSmoothSegm)[i]; j++)
+		{
+			X(TotalCurve).push_back(X((*SmoothedCurve)[i])[j]);
+			Y(TotalCurve).push_back(Y((*SmoothedCurve)[i])[j]);
+		}
+	}
+
+	object.pMet = new BASE_INT[object.qMet * 4];
+	int64_t Xiter = 0, Yiter = 0;
+	for (int64_t iter = 0; iter < object.qMet * 4; iter++)
+	{
+		if (!(iter % 2) && !(iter % 4))
+			((BASE_INT*)object.pMet)[iter] = (BASE_INT)X(TotalCurve)[Xiter++];
+		else if (!(iter % 2))
+			((BASE_INT*)object.pMet)[iter] = (BASE_INT)Y(TotalCurve)[Yiter++];
+		else
+			((BASE_INT*)object.pMet)[iter] = 0;
+	}
+
+	object.Number = Curve->GetDBNumber();
+	ConvertFromStrDBCodeToInt(Curve->GetDBCode(), object.Code);
+
+	err = DataBaseFunc->_BaseWriteObject(db.dataBase, &object, WRITE_ADD);
+	if ((err != 0) || (err != 1))
+	{
+		wcout << "BaseWriteObject failed: " << endl;
+		delete[] object.pMet;
+		return -1;
+	}
+	delete[] object.pMet;
+
+	err = CloseDataBase();
+	if (err != 0)
+	{
+		wcout << "CloseDataBase failed: " << endl;
+		return -1;
+	}
+
+	return err;
+}
+
+int GeneralizationDataBase::UpdateDataBaseObject_UpdateMetric(GeneralizationRequestCurve *Curve)
+{
+	int err;
+	GBASE_OBJECT object;
+	GBASE_QUERY Query;
+	uint32_t countOfSmoothSegm;
+	std::vector<uint32_t> *countOfPointInSmoothSegm;
+	curve** SmoothedCurve;
+	curve TotalCurve;
+	long num = 0;
+
+	err = OpenDataBase();
+	if (err != 0)
+	{
+		wcout << "OpenDataBase failed: " << endl;
+		return -1;
+	}
+
+	memset(&object, 0, sizeof(object));
+	SmoothedCurve = Curve->GetSmoothedCurve(countOfSmoothSegm, &countOfPointInSmoothSegm);
+
+	for (int64_t i = 0; i < countOfSmoothSegm; i++)
+	{
+		num += (*countOfPointInSmoothSegm)[i];
+		for (int64_t j = 0; j < (*countOfPointInSmoothSegm)[i]; j++)
+		{
+			X(TotalCurve).push_back(X((*SmoothedCurve)[i])[j]);
+			Y(TotalCurve).push_back(Y((*SmoothedCurve)[i])[j]);
+		}
+	}
+
+	int *newMetric = new int[2 * num];
+	for (int64_t iter = 0; iter < num; iter++)
+	{
+		newMetric[2 * iter] = X(TotalCurve)[iter];
+		newMetric[2 * iter + 1] = Y(TotalCurve)[iter];
+	}
+
+	unsigned long Number = Curve->GetDBNumber();
+	BASE_INT Code[10];
+	ConvertFromStrDBCodeToInt(Curve->GetDBCode(), Code);
+
+	DataBaseFunc->_BaseInitQuery(&Query, 32767, 1);
+
+	err = DataBaseFunc->_BaseInitObject(&object, NULL, 0, NULL, 1,
+		NULL, 1, NULL, 0, NULL, 0,
+		NULL, 0, NULL, 0);
+	if (err != 0)
+	{
+		wcout << "BaseInitObject failed: " << endl;
+		return -1;
+	}
+
+	/*BASE_INT finalCode[10] = { 0 };
+	int i = 0;
+	for (i = 9; i >= 0; i--)
+	{
+	if (Code->Code[i] != 0)
+	break;
+	}
+	finalCode[0] = i;
+	memcpy(&finalCode[1], Code->Code, 9 * sizeof(BASE_INT));*/
+
+	err = DataBaseFunc->_BaseReadObject(db.dataBase, &Query, NULL,
+		OPEN_CODE, OBJ_FULL,
+		&object, Code, Number);
+	if (err != 0)
+	{
+		wcout << "BaseReadObject failed: " << endl;
+		return -1;
+	}
+
+	err = DataBaseFunc->_BaseUpdateMetric(&object, 2, (void *)newMetric, 1, 2, sizeof(int));
+	if (err != 0)
+	{
+		wcout << "BaseUpdateMetric failed: " << endl;
+		return -1;
+	}
+
+	delete[] newMetric;
+
+	DataBaseFunc->_BaseCloseObject(&object);
+
+	err = CloseDataBase();
+	if (err != 0)
+	{
+		wcout << "CloseDataBase failed: " << endl;
+		return -1;
+	}
+
+	return err;
+}
+
 int GeneralizationDataBase::GetDataBaseObjectCount(long &Count)
 {
 	int err;

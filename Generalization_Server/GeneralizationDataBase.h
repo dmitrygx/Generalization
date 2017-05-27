@@ -2,6 +2,7 @@
 #include "GeneralizationDataBaseLoadFuncs.h"
 #include "common.h"
 #include "GeneralizationDataBase.h"
+#include "GeneralizationRequestCurve.h"
 #include <string>
 //#include "gdbms00f.h"
 
@@ -71,7 +72,7 @@ public:
 		return dbObject;
 	}
 
-	std::string GeneralizationDataBase::DBIntCodeToString(BASE_INT nativeCode[10])
+	std::string DBIntCodeToString(BASE_INT nativeCode[10])
 	{
 		std::string result;
 		uint32_t i = 0;
@@ -89,12 +90,12 @@ public:
 		return result;
 	}
 
-	std::string GeneralizationDataBase::GetDBCode(uint32_t curveNum)
+	std::string GetDBCode(uint32_t curveNum)
 	{
 		return DBIntCodeToString(curvesId[curveNum].codes);
 	}
 
-	long GeneralizationDataBase::GetDBNumber(uint32_t curveNum)
+	long GetDBNumber(uint32_t curveNum)
 	{
 		return curvesId[curveNum].Number;
 	}
@@ -107,5 +108,11 @@ public:
 	int GetDataBaseObjects(long Count, SimpleCurve *Objects, long &readObjCount);
 	int GetDataBaseObjectCodes(long Count, ObjectCode **Codes, long &readObjCount);
 	int GetDataBaseObjectByCode(ObjectCode *Code, SimpleCurve **Obj);
+
+	void ConvertFromStrDBCodeToInt(std::string s, BASE_INT *code);
+	int WriteDataBaseObject(GeneralizationRequestCurve *Curve);
+	int GeneralizationDataBase::UpdateDataBaseObject_UpdateMetric(GeneralizationRequestCurve *Curve);
+	int DeleteDataBaseObject(GeneralizationRequestCurve *Curve);
+	int UpdateDataBaseObject(GeneralizationRequestCurve *Curve);
 };
 
