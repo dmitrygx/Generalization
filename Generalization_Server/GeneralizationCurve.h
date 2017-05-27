@@ -14,6 +14,7 @@
 class GeneralizationCurve
 {
 private:
+	bool use_mkl;
 	bool parallelism_enabled;
 	double_t C;
 	uint32_t Ninit;
@@ -59,6 +60,7 @@ private:
 		double_t radius, point pointCircle);
 	double_t func1(point *p1, point *p2, point *pnt);
 	bool IntersectionLineAndSquare(point *p1, point *p2, std::vector<point> *points);
+	uint32_t OldComputeQuadrics(uint32_t CurrentSegment, double_t dist);
 	uint32_t ComputeQuadrics(uint32_t CurrentSegment, double_t dist);
 	void CopyArraysOfPoints(point *FromArray, point *ToArray, uint32_t Length,
 		uint32_t StartIndexFrom, uint32_t StartIndexTo);
@@ -77,6 +79,14 @@ public:
 		int parallelism = 0);
 
 	/* Setters */
+	void SetUseMkl(bool use)
+	{
+		use_mkl = use;
+	}
+	void SetUseOpenMP(bool use)
+	{
+		parallelism_enabled = use;
+	}
 	void SetParamC(double C_)
 	{
 		C = C_;
@@ -115,6 +125,7 @@ public:
 	void SetParallelismMode(bool mode);
 	void Adduction();
 	void Segmentation();
+	void OldSimplification();
 	void Simplification();
 	void Smoothing();
 	virtual ~GeneralizationCurve();
