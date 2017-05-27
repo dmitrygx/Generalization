@@ -255,6 +255,8 @@ int GeneralizationServer::InitializeCurves(string_t storage_type, string_t stora
 		{
 			Curves[i].SetCurve(X(CurvesMap[i]).size(), &CurvesMap[i]);
 			Curves[i].SetDBInfo("0", i);
+			Curves[i].SetUseOpenMP(algParams->OpenMP);
+			Curves[i].SetUseMkl(algParams->IntelMKL);
 		}
 
 		res = 0;
@@ -283,6 +285,8 @@ int GeneralizationServer::InitializeCurves(string_t storage_type, string_t stora
 		{
 			Curves[i].SetCurve(X(CurvesMap[i]).size(), &CurvesMap[i]);
 			Curves[i].SetDBInfo(GenDataBase.GetDBCode(i), GenDataBase.GetDBNumber(i));
+			Curves[i].SetUseOpenMP(algParams->OpenMP);
+			Curves[i].SetUseMkl(algParams->IntelMKL);
 		}
 
 		res = 0;
@@ -340,6 +344,7 @@ void GeneralizationServer::handle_request(http_request request,
 		auto found_alg_params_Ns = http_get_vars.find(U("params_Ns"));
 		auto found_alg_params_f = http_get_vars.find(U("params_f"));
 		auto found_alg_params_Ninit = http_get_vars.find(U("params_Ninit"));
+		auto found_alg_params_IntelMKL = http_get_vars.find(U("params_IntelMKL"));
 
 		if ((found_storage_type == end(http_get_vars)) ||
 		    (found_storage_path == end(http_get_vars)) ||
@@ -348,7 +353,8 @@ void GeneralizationServer::handle_request(http_request request,
 		    (found_alg_params_Ns == end(http_get_vars)) ||
 		    (found_alg_params_f == end(http_get_vars)) ||
 		    (found_alg_params_Ninit == end(http_get_vars)) ||
-		    (found_alg_params_OpenMP == end(http_get_vars))) {
+		    (found_alg_params_OpenMP == end(http_get_vars)) ||
+		    (found_alg_params_IntelMKL == end(http_get_vars))) {
 			auto err = U("Request received with get var \"type\" "
 				     "or \"path\" omitted from query.");
 			wcout << err << endl;
@@ -366,8 +372,7 @@ void GeneralizationServer::handle_request(http_request request,
 		wstring params_f = found_alg_params_f->second;
 		wstring params_Ninit = found_alg_params_Ninit->second;
 		wstring params_OpenMP = found_alg_params_OpenMP->second;
-
-		boost::replace_all(params_OpenMP, "%2C", ",");
+		wstring params_IntelMKL = found_alg_params_IntelMKL->second;
 
 		std::function<wstring(wstring, const char*, const char*)> replacer =
 			[](wstring str, const char* from, const char* to) {
@@ -381,6 +386,8 @@ void GeneralizationServer::handle_request(http_request request,
 		boost::replace_all(params_Ns, "%2C", ",");
 		boost::replace_all(params_f, "%2C", ",");
 		boost::replace_all(params_Ninit, "%2C", ",");
+		boost::replace_all(params_OpenMP, "%2C", ",");
+		boost::replace_all(params_IntelMKL, "%2C", ",");
 
 		AlgorithmParams algParams;
 		algParams.C = (double) std::stod(replacer(
@@ -395,6 +402,8 @@ void GeneralizationServer::handle_request(http_request request,
 			replacer(params_Ninit, "%2C", ","), ",", "."));
 		algParams.OpenMP = (int)std::stoi(replacer(replacer(
 			params_OpenMP, "%2C", ","), ",", "."));
+		algParams.IntelMKL = (int)std::stoi(replacer(replacer(
+			params_IntelMKL, "%2C", ","), ",", "."));
 
 		cout << "Received algorithm's parameters:" << endl <<
 			"C = " << algParams.C << " (" <<
@@ -408,7 +417,9 @@ void GeneralizationServer::handle_request(http_request request,
 			"Ninit = " << algParams.Ninit << " (" <<
 			utility::conversions::to_utf8string(params_Ninit) << ")" << endl <<
 			"OpenMP = " << algParams.OpenMP << " (" <<
-			utility::conversions::to_utf8string(params_OpenMP) << ")" << endl;
+			utility::conversions::to_utf8string(params_OpenMP) << ")" << endl <<
+			"OpenMP = " << algParams.IntelMKL << " (" <<
+			utility::conversions::to_utf8string(params_IntelMKL) << ")" << endl;
 
 		wcout << U("Received storage: ") << storage_type << endl;
 		InitializeCurves(storage_type, storage_path, &algParams);
@@ -731,7 +742,7 @@ void GeneralizationServer::handle_request(http_request request,
 
 		uint32_t countOfSmoothSegm;
 		std::vector<uint32_t> *countOfPointsInSmoothSegm = NULL;
-		curve** segmented_curve = requested_curve->GetSimplifiedCurve(countOfSmoothSegm,
+		curve** segmented_curve = requested_curve->GetSmoothedCurve(countOfSmoothSegm,
 			&countOfPointsInSmoothSegm);
 		root[L"count_segments"] = countOfSmoothSegm;
 		for (size_t i = 0; i < countOfSmoothSegm; i++)
