@@ -613,6 +613,9 @@ void GeneralizationCurve::SegmentationMath()
 	FullRotationOfSegment.resize(CountOfSegments);
 
 	IntegralСharact.resize(CountOfSegments);
+	LocalMax.resize(CountOfSegments); /* Ei */
+	std::fill_n(LocalMax.begin(), CountOfSegments, 0);
+
 	for (uint32_t i = 0; i < CountOfSegments; i++)
 	{
 		uint32_t N = Ninit;
@@ -639,23 +642,13 @@ void GeneralizationCurve::SegmentationMath()
 			}
 			AngleOfRotation[i][j] = acos(Value);
 			RotationOfSegment[i] += AngleOfRotation[i][j];
-		}
-		FullRotationOfSegment[i] = RotationOfSegment[i] / (2 * M_PI); /* Wi */
-	}
-
-	LocalMax.resize(CountOfSegments); /* Ei */
-
-	for (uint32_t i = 0; i < CountOfSegments; i++)
-	{
-		LocalMax[i] = 0;
-		for (uint32_t j = 1; j < CountOfSegments - 1; j++)
-		{
 			if ((AngleOfRotation[i][j] > AngleOfRotation[i][j - 1]) &&
 				(AngleOfRotation[i][j] > AngleOfRotation[i][j + 1]))
 			{
 				LocalMax[i]++;
 			}
 		}
+		FullRotationOfSegment[i] = RotationOfSegment[i] / (2 * M_PI); /* Wi */
 		IntegralСharact[i] = FullRotationOfSegment[i] + f * LocalMax[i]; /* Mi */
 	}
 
@@ -684,12 +677,7 @@ void GeneralizationCurve::SegmentationMath()
 	}
 
 	CountOfAdductionPointsInSegment.resize(CountOfSegments);
-
-	for (uint32_t i = 0; i < CountOfSegments; ++i)
-	{
-		CountOfAdductionPointsInSegment[i] = 0;
-	}
-
+	std::fill_n(CountOfAdductionPointsInSegment.begin(), CountOfSegments, 0);
 	ResultSegmentCount = 0;
 	while (ShouldUnionSegment)
 	{
@@ -764,7 +752,206 @@ void GeneralizationCurve::SegmentationMath()
 
 void GeneralizationCurve::SegmentationMkl()
 {
+	std::vector<double_t> Dist;
+	Dist.resize(AdductionCount - 1);
 
+	for (uint32_t i = 0; i < AdductionCount - 1; i++)
+	{
+		double_t DistPointSub[2]{
+			(X(*AdductionPoints)[i + 1] - X(*AdductionPoints)[i]),
+			(Y(*AdductionPoints)[i + 1] - Y(*AdductionPoints)[i])
+		};
+		double_t DistPointSub2[2], DistArg;
+		vmdPowx(2, DistPointSub, 2, DistPointSub2, 0);
+		DistArg = DistPointSub2[0] + DistPointSub2[1];
+
+		vmdSqrt(1, &DistArg, &Dist[i], 0);
+	}
+	CountOfSegments = AdductionCount / Ninit;
+	bool flag = false;
+	if ((AdductionCount % Ninit) != 0)
+	{
+		flag = true;
+		CountOfSegments++;
+	}
+
+	curve *InitSegments = new curve[CountOfSegments];
+	for (uint32_t i = 0; i < CountOfSegments; i++)
+	{
+		X(InitSegments[i]).resize(Ninit);
+		Y(InitSegments[i]).resize(Ninit);
+	}
+
+	SegmentCountPoints.resize(CountOfSegments);
+
+	uint32_t k = 0;
+	for (uint32_t i = 0; i < CountOfSegments; i++)
+	{
+		uint32_t N = Ninit;
+		if ((flag) && (i == CountOfSegments - 1))
+		{
+			N = AdductionCount % Ninit;
+		}
+		for (uint32_t j = 0; j < N; j++)
+		{
+			X(InitSegments[i])[j] = X(*AdductionPoints)[k];
+			Y(InitSegments[i])[j] = Y(*AdductionPoints)[k];
+			k++;
+		}
+		SegmentCountPoints[i] = N;
+	}
+
+	k = 0;
+	std::vector<std::vector<double_t>> AngleOfRotation;
+	AngleOfRotation.resize(CountOfSegments);
+	for (uint32_t i = 0; i < CountOfSegments; i++)
+	{
+		AngleOfRotation[i].resize(Ninit);
+	}
+
+	std::vector<double_t> RotationOfSegment;
+	RotationOfSegment.resize(CountOfSegments);
+	std::vector<double_t> FullRotationOfSegment;
+	FullRotationOfSegment.resize(CountOfSegments);
+
+	IntegralСharact.resize(CountOfSegments);
+	LocalMax.resize(CountOfSegments); /* Ei */
+	std::fill_n(LocalMax.begin(), CountOfSegments, 0);
+
+	uint32_t *N = (uint32_t *)mkl_calloc(CountOfSegments, sizeof(*N), 64);
+	std::fill_n(N, CountOfSegments - 1, Ninit);
+	N[CountOfSegments - 1] = (flag) ? AdductionCount % Ninit : N[CountOfSegments - 1];
+
+	for (uint32_t i = 0; i < CountOfSegments; i++)
+	{
+		for (uint32_t j = 1; j < N[i] - 1; j++)
+		{
+			double_t topLeft = (X(InitSegments[i])[j + 1] - X(InitSegments[i])[j]) *
+				(X(InitSegments[i])[j] - X(InitSegments[i])[j - 1]);
+			double_t topRight = (Y(InitSegments[i])[j + 1] - Y(InitSegments[i])[j]) *
+				(Y(InitSegments[i])[j] - Y(InitSegments[i])[j - 1]);
+			double_t bottom = Dist[k] * Dist[k];
+			k++;
+			double_t Value = (topLeft + topRight) / bottom;
+			if (Value > 1)
+			{
+				Value = 1;
+			}
+			else if (Value < -1)
+			{
+				Value = -1;
+			}
+			vmdAcos(1, &Value, &AngleOfRotation[i][j], 0);
+			RotationOfSegment[i] += AngleOfRotation[i][j];
+
+			if ((AngleOfRotation[i][j] > AngleOfRotation[i][j - 1]) &&
+			    (AngleOfRotation[i][j] > AngleOfRotation[i][j + 1]))
+				LocalMax[i]++;
+		}
+		FullRotationOfSegment[i] = RotationOfSegment[i] / (2 * M_PI); /* Wi */
+		IntegralСharact[i] = FullRotationOfSegment[i] + f * LocalMax[i]; /* Mi */
+	}
+
+	mkl_free(N);
+
+	std::vector<uint32_t> MinSegmentCountPoint;
+	MinSegmentCountPoint.resize(CountOfSegments);
+	uint32_t MinCountSegment = 0;
+	bool ShouldUnionSegment = false;
+
+	for (uint32_t i = 0; i < CountOfSegments; ++i)
+	{
+		if (SegmentCountPoints[i] < Np)
+		{
+			MinSegmentCountPoint[MinCountSegment++] = i;
+		}
+	}
+	if ((CountOfSegments > Ns) && (MinCountSegment != 0))
+	{
+		ShouldUnionSegment = true;
+	}
+
+	AdductionPointsInSegment.resize(CountOfSegments);
+	for (uint32_t i = 0; i < CountOfSegments; i++)
+	{
+		X(AdductionPointsInSegment[i]).resize(AdductionCount);
+		Y(AdductionPointsInSegment[i]).resize(AdductionCount);
+	}
+
+	CountOfAdductionPointsInSegment.resize(CountOfSegments);
+	std::fill_n(CountOfAdductionPointsInSegment.begin(), CountOfSegments, 0);
+	ResultSegmentCount = 0;
+
+	while (ShouldUnionSegment)
+	{
+		for (uint32_t i = 0; i < CountOfSegments; i += 2)
+		{
+			if (i + 1 != CountOfSegments)
+			{
+				if ((IntegralСharact[i + 1] - IntegralСharact[i] >= -10) &&
+				    (IntegralСharact[i + 1] - IntegralСharact[i] <= 10))
+				{
+					for (uint32_t j = 0; j < SegmentCountPoints[i]; ++j)
+					{
+						X(AdductionPointsInSegment[ResultSegmentCount])[CountOfAdductionPointsInSegment[ResultSegmentCount]] =
+							X(InitSegments[i])[j];
+						Y(AdductionPointsInSegment[ResultSegmentCount])[CountOfAdductionPointsInSegment[ResultSegmentCount]] =
+							Y(InitSegments[i])[j];
+						CountOfAdductionPointsInSegment[ResultSegmentCount]++;
+					}
+					for (uint32_t j = 0; j < SegmentCountPoints[i + 1]; ++j)
+					{
+						X(AdductionPointsInSegment[ResultSegmentCount])[CountOfAdductionPointsInSegment[ResultSegmentCount]] =
+							X(InitSegments[i + 1])[j];
+						Y(AdductionPointsInSegment[ResultSegmentCount])[CountOfAdductionPointsInSegment[ResultSegmentCount]] =
+							Y(InitSegments[i + 1])[j];
+						CountOfAdductionPointsInSegment[ResultSegmentCount]++;
+					}
+					ResultSegmentCount++;
+				}
+				else
+				{
+					for (uint32_t j = 0; j < SegmentCountPoints[i]; ++j)
+					{
+						X(AdductionPointsInSegment[ResultSegmentCount])[CountOfAdductionPointsInSegment[ResultSegmentCount]] =
+							X(InitSegments[i])[j];
+						Y(AdductionPointsInSegment[ResultSegmentCount])[CountOfAdductionPointsInSegment[ResultSegmentCount]] =
+							Y(InitSegments[i])[j];
+						CountOfAdductionPointsInSegment[ResultSegmentCount]++;
+					}
+					ResultSegmentCount++;
+					for (uint32_t j = 0; j < SegmentCountPoints[i + 1]; ++j)
+					{
+						X(AdductionPointsInSegment[ResultSegmentCount])[CountOfAdductionPointsInSegment[ResultSegmentCount]] =
+							X(InitSegments[i + 1])[j];
+						Y(AdductionPointsInSegment[ResultSegmentCount])[CountOfAdductionPointsInSegment[ResultSegmentCount]] =
+							Y(InitSegments[i + 1])[j];
+						CountOfAdductionPointsInSegment[ResultSegmentCount]++;
+					}
+					ResultSegmentCount++;
+				}
+			}
+		}
+		break;
+	}
+
+	if (!ShouldUnionSegment)
+	{
+		for (uint32_t i = 0; i < CountOfSegments; ++i)
+		{
+			for (uint32_t j = 0; j < SegmentCountPoints[i]; ++j)
+			{
+				X(AdductionPointsInSegment[ResultSegmentCount])[CountOfAdductionPointsInSegment[ResultSegmentCount]] =
+					X(InitSegments[i])[j];
+				Y(AdductionPointsInSegment[ResultSegmentCount])[CountOfAdductionPointsInSegment[ResultSegmentCount]] =
+					Y(InitSegments[i])[j];
+				CountOfAdductionPointsInSegment[ResultSegmentCount]++;
+			}
+			ResultSegmentCount++;
+		}
+	}
+
+	delete[] InitSegments;
 }
 
 void GeneralizationCurve::Segmentation()
