@@ -859,14 +859,18 @@ void GeneralizationServer::handle_request(http_request request,
 
 		auto request_curve = found_curve->second;
 		uint32_t requested_curve_number = std::stoi(request_curve);
-		wcout << U("Received request SAVE_CURVE: ") << request_curve << " ("
+		wcout << U("Received request GENERALIZE_CURVE: ") << request_curve << " ("
 			<< requested_curve_number << ")" << endl;
 		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
 
 		requested_curve->DispatchEvent(Event_t::ADDUCTION);
+		wcout << U("Step ADDUCTION done") << endl;
 		requested_curve->DispatchEvent(Event_t::SEGMENTATION);
+		wcout << U("Step SEGMENTATION done") << endl;
 		requested_curve->DispatchEvent(Event_t::SIMPLIFICATION);
+		wcout << U("Step SIMPLIFICATION done") << endl;
 		requested_curve->DispatchEvent(Event_t::SMOOTHING);
+		wcout << U("Step SMOOTHING done") << endl;
 
 
 		/* Send the resutls only result curve, i.e. Smoothed curve */
