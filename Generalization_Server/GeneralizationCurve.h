@@ -153,16 +153,21 @@ public:
 	{
 		Ns = Ns_;
 	}
+	void SetParamM(double M_)
+	{
+		M = M_;
+	}
 	/* ~Setters */
 
 	/* Getters */
 	curve* GetSouceCurve();
 	curve* GetAdductedCurve(uint32_t &count);
 	std::vector<curve> *GetSegmentedCurve(uint32_t &countOfSegm,
+					      uint32_t &countOfInitSegm,
 					      std::vector<uint32_t> **countOfPointInSegm);
-	curve**GetSimplifiedCurve(uint32_t &countOfSimplSegm,
+	curve**GetSimplifiedCurve(uint32_t &countOfSimplSegm, uint32_t &totalCountOfPoints,
 				  std::vector<uint32_t> **countOfPointInSimplSegm);
-	curve** GetSmoothedCurve(uint32_t &countOfSmoothSegm,
+	curve** GetSmoothedCurve(uint32_t &countOfSmoothSegm, uint32_t &countOfSmoothPoints,
 				 std::vector<uint32_t> **countOfPointInSmoothSegm);
 	/* ~Getters */
 

@@ -152,7 +152,7 @@ int GeneralizationDataBase::WriteDataBaseObject(GeneralizationRequestCurve *Curv
 {
 	int err;
 	GBASE_OBJECT object;
-	uint32_t countOfSmoothSegm;
+	uint32_t countOfSmoothSegm, totalCountOfSmoothPoints;
 	std::vector<uint32_t> *countOfPointInSmoothSegm;
 	curve** SmoothedCurve;
 	curve TotalCurve;
@@ -165,7 +165,9 @@ int GeneralizationDataBase::WriteDataBaseObject(GeneralizationRequestCurve *Curv
 	}
 
 	memset(&object, 0, sizeof(object));
-	SmoothedCurve = Curve->GetSmoothedCurve(countOfSmoothSegm, &countOfPointInSmoothSegm);
+	SmoothedCurve = Curve->GetSmoothedCurve(countOfSmoothSegm,
+		totalCountOfSmoothPoints,
+		&countOfPointInSmoothSegm);
 
 	for (int64_t i = 0; i < countOfSmoothSegm; i++)
 	{
@@ -216,7 +218,7 @@ int GeneralizationDataBase::UpdateDataBaseObject_UpdateMetric(GeneralizationRequ
 	int err;
 	GBASE_OBJECT object;
 	GBASE_QUERY Query;
-	uint32_t countOfSmoothSegm;
+	uint32_t countOfSmoothSegm, totalCountOfSmoothPoints;
 	std::vector<uint32_t> *countOfPointInSmoothSegm;
 	curve** SmoothedCurve;
 	curve TotalCurve;
@@ -230,7 +232,9 @@ int GeneralizationDataBase::UpdateDataBaseObject_UpdateMetric(GeneralizationRequ
 	}
 
 	memset(&object, 0, sizeof(object));
-	SmoothedCurve = Curve->GetSmoothedCurve(countOfSmoothSegm, &countOfPointInSmoothSegm);
+	SmoothedCurve = Curve->GetSmoothedCurve(countOfSmoothSegm,
+		totalCountOfSmoothPoints,
+		&countOfPointInSmoothSegm);
 
 	for (int64_t i = 0; i < countOfSmoothSegm; i++)
 	{
@@ -283,7 +287,8 @@ int GeneralizationDataBase::UpdateDataBaseObject_UpdateMetric(GeneralizationRequ
 		return -1;
 	}
 
-	err = DataBaseFunc->_BaseUpdateMetric(&object, 2, (void *)newMetric, 1, 2, sizeof(int));
+	err = DataBaseFunc->_BaseUpdateMetric(&object, 2, (void *)newMetric,
+		1, num, sizeof(int));
 	if (err != 0)
 	{
 		wcout << "BaseUpdateMetric failed: " << endl;

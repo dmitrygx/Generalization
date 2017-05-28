@@ -28,7 +28,7 @@ void GeneralizationCurve::InitializeClassMembers(void)
 	CheckInterSection[IntelMklMath] = [this](point point1, point point2,
 		double_t radius, point pointCircle) {
 		return this->CheckInterSectionMkl(point1, point2,
-			radius, pointCircle);
+						  radius, pointCircle);
 	};
 
 	SegmentationInner[StdMath] = [this]() {
@@ -134,27 +134,31 @@ curve* GeneralizationCurve::GetAdductedCurve(uint32_t &count)
 }
 
 std::vector<curve> *GeneralizationCurve::GetSegmentedCurve(uint32_t &countOfSegm,
+							   uint32_t &countOfInitSegm,
 							   std::vector<uint32_t> **countOfPointInSegm)
 {
 	countOfSegm = ResultSegmentCount;
+	countOfInitSegm = CountOfSegments;
 	*countOfPointInSegm = &CountOfAdductionPointsInSegment;
 
 	return &AdductionPointsInSegment;
 }
 
-curve** GeneralizationCurve::GetSimplifiedCurve(uint32_t &countOfSimplSegm,
+curve** GeneralizationCurve::GetSimplifiedCurve(uint32_t &countOfSimplSegm, uint32_t &totalCountOfPoints,
 						std::vector<uint32_t> **countOfPointInSimplSegm)
 {
 	countOfSimplSegm = ResultSegmentCount;
+	totalCountOfPoints = TotalCountOfPointsAfterSimplification;
 	*countOfPointInSimplSegm = &CountOfPointsAfterSimplification;
 
 	return PointsAfterSimplification;
 }
 
-curve** GeneralizationCurve::GetSmoothedCurve(uint32_t &countOfSmoothSegm,
+curve** GeneralizationCurve::GetSmoothedCurve(uint32_t &countOfSmoothSegm, uint32_t &countOfSmoothPoints,
 					      std::vector<uint32_t> **countOfPointInSmoothSegm)
 {
 	countOfSmoothSegm = ResultSegmentCount;
+	countOfSmoothPoints = TotalCountOfPointsAfterSmoothing;
 	*countOfPointInSmoothSegm = &CountOfPointsAfterSmoothing;
 
 	return PointsAfterSmoothing;
@@ -202,7 +206,6 @@ double_t GeneralizationCurve::ComputeDistancesMkl(void)
 
 		sum += Distance[i];
 	}
-
 	return sum;
 }
 
@@ -1142,15 +1145,14 @@ double_t GeneralizationCurve::ComputeDistBetweenPointsMath(point *A, point *B)
 
 double_t GeneralizationCurve::ComputeDistBetweenPointsMkl(point *A, point *B)
 {
-	double arg[2]{
-		(X(*B) - X(*A)),
-		(Y(*B) - Y(*A))
-	};
-	double argXY[2];
-	vmdPowx(2, arg, 2, argXY, 0);
-	double SumXYarg = argXY[0] + argXY[1];
+	double arg {
+		(X(*B) - X(*A)) * (X(*B) - X(*A)) +
+		(Y(*B) - Y(*A)) * (Y(*B) - Y(*A))
+	},  res;
 
-	return SumXYarg * SumXYarg;
+	vmdSqrt(1, &arg, &res, 0);
+
+	return res;
 }
 
 double_t GeneralizationCurve::ComputeP(double_t DistAB, double_t DistBC, double_t DistAC)
@@ -1494,8 +1496,6 @@ void GeneralizationCurve::SimplificationMkl()
 		Y[i] /= 10;
 		XY[i] = X * Y[i];
 		XY[i] /= 10;
-
-
 
 		LinearRegK[i] = (XY[i] * X * Y[i]) / (X2 * X * X);
 		LinearRegB[i] = (X2 * Y[i] - X * XY[i]) / (X2 - X * X);
