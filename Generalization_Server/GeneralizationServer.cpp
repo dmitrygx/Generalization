@@ -343,6 +343,7 @@ void GeneralizationServer::handle_request(http_request request,
 		auto found_alg_params_Np = http_get_vars.find(U("params_Np"));
 		auto found_alg_params_Ns = http_get_vars.find(U("params_Ns"));
 		auto found_alg_params_f = http_get_vars.find(U("params_f"));
+		auto found_alg_params_M = http_get_vars.find(U("params_M"));
 		auto found_alg_params_Ninit = http_get_vars.find(U("params_Ninit"));
 		auto found_alg_params_IntelMKL = http_get_vars.find(U("params_IntelMKL"));
 
@@ -351,6 +352,7 @@ void GeneralizationServer::handle_request(http_request request,
 		    (found_alg_params_C == end(http_get_vars))		||
 		    (found_alg_params_Np == end(http_get_vars))		||
 		    (found_alg_params_Ns == end(http_get_vars))		||
+		    (found_alg_params_f == end(http_get_vars))		||
 		    (found_alg_params_f == end(http_get_vars))		||
 		    (found_alg_params_Ninit == end(http_get_vars))	||
 		    (found_alg_params_IntelMKL == end(http_get_vars))	||
@@ -370,11 +372,11 @@ void GeneralizationServer::handle_request(http_request request,
 		wstring params_Np = found_alg_params_Np->second;
 		wstring params_Ns = found_alg_params_Ns->second;
 		wstring params_f = found_alg_params_f->second;
+		wstring params_M = found_alg_params_M->second;
 		wstring params_Ninit = found_alg_params_Ninit->second;
+
 		wstring params_OpenMP = found_alg_params_OpenMP->second;
 		wstring params_IntelMKL = found_alg_params_IntelMKL->second;
-
-		boost::replace_all(params_OpenMP, "%2C", ",");
 
 		std::function<wstring(wstring, const char*, const char*)> replacer =
 			[](wstring str, const char* from, const char* to) {
@@ -387,6 +389,7 @@ void GeneralizationServer::handle_request(http_request request,
 		boost::replace_all(params_Np, "%2C", ",");
 		boost::replace_all(params_Ns, "%2C", ",");
 		boost::replace_all(params_f, "%2C", ",");
+		boost::replace_all(params_M, "%2C", ",");
 		boost::replace_all(params_Ninit, "%2C", ",");
 		boost::replace_all(params_OpenMP, "%2C", ",");
 		boost::replace_all(params_IntelMKL, "%2C", ",");
@@ -400,6 +403,8 @@ void GeneralizationServer::handle_request(http_request request,
 			replacer(params_Ns, "%2C", ","), ",", "."));
 		algParams.f = (double) std::stod(replacer(
 			replacer(params_f, "%2C", ","), ",", "."));
+		algParams.M = (double)std::stod(replacer(
+			replacer(params_M, "%2C", ","), ",", "."));
 		algParams.Ninit = (uint32_t) std::stoi(replacer(
 			replacer(params_Ninit, "%2C", ","), ",", "."));
 		algParams.OpenMP = (int)std::stoi(replacer(replacer(
@@ -416,6 +421,8 @@ void GeneralizationServer::handle_request(http_request request,
 			utility::conversions::to_utf8string(params_Ns) << ")" << endl <<
 			"f = " << algParams.f << " (" <<
 			utility::conversions::to_utf8string(params_f) << ")" << endl <<
+			"M = " << algParams.M << " (" <<
+			utility::conversions::to_utf8string(params_M) << ")" << endl <<
 			"Ninit = " << algParams.Ninit << " (" <<
 			utility::conversions::to_utf8string(params_Ninit) << ")" << endl <<
 			"OpenMP = " << algParams.OpenMP << " (" <<
@@ -467,13 +474,15 @@ void GeneralizationServer::handle_request(http_request request,
 		auto found_alg_params_Np = http_get_vars.find(U("params_Np"));
 		auto found_alg_params_Ns = http_get_vars.find(U("params_Ns"));
 		auto found_alg_params_f = http_get_vars.find(U("params_f"));
+		auto found_alg_params_M = http_get_vars.find(U("params_M"));
 		auto found_alg_params_Ninit = http_get_vars.find(U("params_Ninit"));
 
-		if ((found_alg_params_C == end(http_get_vars)) ||
-		    (found_alg_params_Np == end(http_get_vars)) ||
-		    (found_alg_params_Ns == end(http_get_vars)) ||
-		    (found_alg_params_f == end(http_get_vars)) ||
-		    (found_alg_params_Ninit == end(http_get_vars)) || 
+		if ((found_alg_params_C == end(http_get_vars))		||
+		    (found_alg_params_Np == end(http_get_vars))		||
+		    (found_alg_params_Ns == end(http_get_vars))		||
+		    (found_alg_params_f == end(http_get_vars))		||
+		    (found_alg_params_M == end(http_get_vars))		||
+		    (found_alg_params_Ninit == end(http_get_vars))	|| 
 		    (found_curve == end(http_get_vars))) {
 			auto err = U("Request received with get var \"curve_number\" omitted from query.");
 			wcout << err << endl;
@@ -486,12 +495,14 @@ void GeneralizationServer::handle_request(http_request request,
 		wstring params_Np = found_alg_params_Np->second;
 		wstring params_Ns = found_alg_params_Ns->second;
 		wstring params_f = found_alg_params_f->second;
+		wstring params_M = found_alg_params_M->second;
 		wstring params_Ninit = found_alg_params_Ninit->second;
 
 		boost::replace_all(params_C, "%2C", ",");
 		boost::replace_all(params_Np, "%2C", ",");
 		boost::replace_all(params_Ns, "%2C", ",");
 		boost::replace_all(params_f, "%2C", ",");
+		boost::replace_all(params_M, "%2C", ",");
 		boost::replace_all(params_Ninit, "%2C", ",");
 
 		std::function<wstring(wstring, const char*, const char*)> replacer =
@@ -509,16 +520,17 @@ void GeneralizationServer::handle_request(http_request request,
 			replacer(params_Ns, "%2C", ","), ",", "."));
 		algParams.f = (double)std::stod(replacer(
 			replacer(params_f, "%2C", ","), ",", "."));
+		algParams.M = (double)std::stod(replacer(
+			replacer(params_M, "%2C", ","), ",", "."));
 		algParams.Ninit = (uint32_t)std::stoi(replacer(
 			replacer(params_Ninit, "%2C", ","), ",", "."));
+
 
 		auto request_curve = found_curve->second;
 		uint32_t requested_curve_number = std::stoi(request_curve);
 
 		wcout << U("Received request SOURCE_CURVE: ") << request_curve << " ("
 			<< requested_curve_number << ")" << endl;
-
-
 
 		cout << "Received algorithm's parameters:" << endl <<
 			"C = " << algParams.C << " (" <<
@@ -529,6 +541,8 @@ void GeneralizationServer::handle_request(http_request request,
 			utility::conversions::to_utf8string(params_Ns) << ")" << endl <<
 			"f = " << algParams.f << " (" <<
 			utility::conversions::to_utf8string(params_f) << ")" << endl <<
+			"M = " << algParams.M << " (" <<
+			utility::conversions::to_utf8string(params_M) << ")" << endl <<
 			"Ninit = " << algParams.Ninit << " (" <<
 			utility::conversions::to_utf8string(params_Ninit) << ")" << endl;
 
@@ -538,6 +552,7 @@ void GeneralizationServer::handle_request(http_request request,
 		requested_curve->SetParamNp(algParams.Np);
 		requested_curve->SetParamNinit(algParams.Ninit);
 		requested_curve->SetParamf(algParams.f);
+		requested_curve->SetParamM(algParams.M);
 		requested_curve->SetParamNs(algParams.Ns);
 
 		uint32_t size = X(CurvesMap[requested_curve_number]).size();
@@ -634,11 +649,12 @@ void GeneralizationServer::handle_request(http_request request,
 		auto array_segments = answer.array();
 		json::value root;
 
-		uint32_t countOfSegm;
+		uint32_t countOfSegm, countOfInitSegm;
 		std::vector<uint32_t> *countOfPointsInSegm = NULL;
-		std::vector<curve> *segmented_curve = requested_curve->GetSegmentedCurve(countOfSegm,
+		std::vector<curve> *segmented_curve = requested_curve->GetSegmentedCurve(countOfSegm, countOfInitSegm,
 											 &countOfPointsInSegm);
 		root[L"count_segments"] = countOfSegm;
+		root[L"count_init_segments"] = countOfInitSegm;
 		for (size_t i = 0; i < countOfSegm; i++)
 		{
 			web::json::value segmObj;
@@ -689,10 +705,12 @@ void GeneralizationServer::handle_request(http_request request,
 		json::value root;
 
 		uint32_t countOfSimplSegm;
+		uint32_t totalCountOfSimplPoints;
 		std::vector<uint32_t> *countOfPointsInSimplSegm = NULL;
-		curve** segmented_curve = requested_curve->GetSimplifiedCurve(countOfSimplSegm,
+		curve** segmented_curve = requested_curve->GetSimplifiedCurve(countOfSimplSegm, totalCountOfSimplPoints,
 									      &countOfPointsInSimplSegm);
 		root[L"count_segments"] = countOfSimplSegm;
+		root[L"total_count_points"] = totalCountOfSimplPoints;
 		for (size_t i = 0; i < countOfSimplSegm; i++)
 		{
 			web::json::value segmObj;
@@ -742,11 +760,13 @@ void GeneralizationServer::handle_request(http_request request,
 		auto array_segments = answer.array();
 		json::value root;
 
-		uint32_t countOfSmoothSegm;
+		uint32_t countOfSmoothSegm, totalCountOfSmoothPoints;
 		std::vector<uint32_t> *countOfPointsInSmoothSegm = NULL;
 		curve** segmented_curve = requested_curve->GetSmoothedCurve(countOfSmoothSegm,
+			totalCountOfSmoothPoints,
 			&countOfPointsInSmoothSegm);
 		root[L"count_segments"] = countOfSmoothSegm;
+		root[L"total_count_points"] = totalCountOfSmoothPoints;
 		for (size_t i = 0; i < countOfSmoothSegm; i++)
 		{
 			web::json::value segmObj;
@@ -757,8 +777,8 @@ void GeneralizationServer::handle_request(http_request request,
 				web::json::value x;
 				web::json::value y;
 
-				x = web::json::value::number(X((*segmented_curve)[i])[j]);
-				y = web::json::value::number(Y((*segmented_curve)[i])[j]);
+				x = web::json::value::number(X(*(segmented_curve)[i])[j]);
+				y = web::json::value::number(Y(*(segmented_curve)[i])[j]);
 
 				web::json::value pointXY;
 				pointXY[L"X"] = x;
