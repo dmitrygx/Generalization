@@ -51,6 +51,7 @@ GeneralizationServer::GeneralizationServer(const http::uri& url) : listener(http
 	allowedPath[static_cast<string_t>(U("simplification_curve"))] = SIMPLIFICATION_CURVE;
 	allowedPath[static_cast<string_t>(U("smoothing_curve"))] = SMOOTHING_CURVE;
 	allowedPath[static_cast<string_t>(U("save_curve"))] = SAVE_CURVE;
+	allowedPath[static_cast<string_t>(U("generalization_curve"))] = GENERALIZE_CURVE;
 
 	running = true;
 	/*try
@@ -586,8 +587,10 @@ void GeneralizationServer::handle_request(http_request request,
 	else if ((reqObj == ADDUCTION_CURVE) && (initialized))
 	{
 		auto found_curve = http_get_vars.find(U("curve_number"));
+		auto found_result = http_get_vars.find(U("result"));
 
-		if (found_curve == end(http_get_vars)) {
+		if (found_curve == end(http_get_vars) ||
+		    found_result == end(http_get_vars)) {
 			auto err = U("Request received with get var \"curve_number\" omitted from query.");
 			wcout << err << endl;
 			/* BAD */
@@ -596,11 +599,15 @@ void GeneralizationServer::handle_request(http_request request,
 		}
 
 		auto request_curve = found_curve->second;
+		auto request_result = found_result->second;
 		uint32_t requested_curve_number = std::stoi(request_curve);
-		wcout << U("Received request ADDUCTION_CURVE: ") << request_curve << " ("
+		uint32_t requested_curve_result = std::stoi(request_result);
+		wcout << U("Received request ADDUCTION_CURVE(") << request_result << U("): ")
+			<< request_curve << " ("
 			<< requested_curve_number << ")" << endl;
 		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
-		requested_curve->DispatchEvent(Event_t::ADDUCTION);
+		if (!requested_curve_result)
+			requested_curve->DispatchEvent(Event_t::ADDUCTION);
 
 		auto array = answer.array();
 		json::value root;
@@ -630,8 +637,10 @@ void GeneralizationServer::handle_request(http_request request,
 	else if ((reqObj == SEGMENTATION_CURVE) && (initialized))
 	{
 		auto found_curve = http_get_vars.find(U("curve_number"));
+		auto found_result = http_get_vars.find(U("result"));
 
-		if (found_curve == end(http_get_vars)) {
+		if (found_curve == end(http_get_vars) ||
+		    found_result == end(http_get_vars)) {
 			auto err = U("Request received with get var \"curve_number\" omitted from query.");
 			wcout << err << endl;
 			/* BAD */
@@ -640,11 +649,15 @@ void GeneralizationServer::handle_request(http_request request,
 		}
 
 		auto request_curve = found_curve->second;
+		auto request_result = found_result->second;
 		uint32_t requested_curve_number = std::stoi(request_curve);
-		wcout << U("Received request SEGMENTATION_CURVE: ") << request_curve << " ("
+		uint32_t requested_curve_result = std::stoi(request_result);
+		wcout << U("Received request SEGMENTATION_CURVE(") << request_result << U("): ")
+			<< request_curve << " ("
 			<< requested_curve_number << ")" << endl;
 		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
-		requested_curve->DispatchEvent(Event_t::SEGMENTATION);
+		if (!requested_curve_result)
+			requested_curve->DispatchEvent(Event_t::SEGMENTATION);
 
 		auto array_segments = answer.array();
 		json::value root;
@@ -685,8 +698,10 @@ void GeneralizationServer::handle_request(http_request request,
 	else if ((reqObj == SIMPLIFICATION_CURVE) && (initialized))
 	{
 		auto found_curve = http_get_vars.find(U("curve_number"));
+		auto found_result = http_get_vars.find(U("result"));
 
-		if (found_curve == end(http_get_vars)) {
+		if (found_curve == end(http_get_vars) ||
+		    found_result == end(http_get_vars)) {
 			auto err = U("Request received with get var \"curve_number\" omitted from query.");
 			wcout << err << endl;
 			/* BAD */
@@ -695,11 +710,15 @@ void GeneralizationServer::handle_request(http_request request,
 		}
 
 		auto request_curve = found_curve->second;
+		auto request_result = found_result->second;
 		uint32_t requested_curve_number = std::stoi(request_curve);
-		wcout << U("Received request SIMPLIFICATION_CURVE: ") << request_curve << " ("
+		uint32_t requested_curve_result = std::stoi(request_result);
+		wcout << U("Received request SIMPLIFICATION_CURVE(") << request_result << U("): ")
+			<< request_curve << " ("
 			<< requested_curve_number << ")" << endl;
 		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
-		requested_curve->DispatchEvent(Event_t::SIMPLIFICATION);
+		if (!requested_curve_result)
+			requested_curve->DispatchEvent(Event_t::SIMPLIFICATION);
 
 		auto array_segments = answer.array();
 		json::value root;
@@ -741,8 +760,10 @@ void GeneralizationServer::handle_request(http_request request,
 	else if ((reqObj == SMOOTHING_CURVE) && (initialized))
 	{
 		auto found_curve = http_get_vars.find(U("curve_number"));
+		auto found_result = http_get_vars.find(U("result"));
 
-		if (found_curve == end(http_get_vars)) {
+		if (found_curve == end(http_get_vars) ||
+		    found_result == end(http_get_vars)) {
 			auto err = U("Request received with get var \"curve_number\" omitted from query.");
 			wcout << err << endl;
 			/* BAD */
@@ -751,11 +772,15 @@ void GeneralizationServer::handle_request(http_request request,
 		}
 
 		auto request_curve = found_curve->second;
+		auto request_result = found_result->second;
 		uint32_t requested_curve_number = std::stoi(request_curve);
-		wcout << U("Received request SMOOTHING_CURVE: ") << request_curve << " ("
+		uint32_t requested_curve_result = std::stoi(request_result);
+		wcout << U("Received request SMOOTHING_CURV(") << request_result << U("): ")
+			<< request_curve << " ("
 			<< requested_curve_number << ")" << endl;
 		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
-		requested_curve->DispatchEvent(Event_t::SMOOTHING);
+		if (!requested_curve_result)
+			requested_curve->DispatchEvent(Event_t::SMOOTHING);
 
 		auto array_segments = answer.array();
 		json::value root;
@@ -817,6 +842,71 @@ void GeneralizationServer::handle_request(http_request request,
 		cout << "We are ready to reply" << endl;
 
 		request.reply((err != 0) ? status_codes::InternalError : status_codes::OK);
+		return;
+	}
+	else if ((reqObj == GENERALIZE_CURVE) && (initialized))
+	{
+		auto found_curve = http_get_vars.find(U("curve_number"));
+		int err;
+
+		if (found_curve == end(http_get_vars)) {
+			auto err = U("Request received with get var \"curve_number\" omitted from query.");
+			wcout << err << endl;
+			/* BAD */
+			request.reply(status_codes::BadRequest);
+			return;
+		}
+
+		auto request_curve = found_curve->second;
+		uint32_t requested_curve_number = std::stoi(request_curve);
+		wcout << U("Received request SAVE_CURVE: ") << request_curve << " ("
+			<< requested_curve_number << ")" << endl;
+		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
+
+		requested_curve->DispatchEvent(Event_t::ADDUCTION);
+		requested_curve->DispatchEvent(Event_t::SEGMENTATION);
+		requested_curve->DispatchEvent(Event_t::SIMPLIFICATION);
+		requested_curve->DispatchEvent(Event_t::SMOOTHING);
+
+
+		/* Send the resutls only result curve, i.e. Smoothed curve */
+		/* If threse are needs, 'result' field should be specified
+		 * with the appropriate request */
+		auto array_segments = answer.array();
+		json::value root;
+
+		uint32_t countOfSmoothSegm, totalCountOfSmoothPoints;
+		std::vector<uint32_t> *countOfPointsInSmoothSegm = NULL;
+		curve** segmented_curve = requested_curve->GetSmoothedCurve(countOfSmoothSegm,
+			totalCountOfSmoothPoints,
+			&countOfPointsInSmoothSegm);
+		root[L"count_segments"] = countOfSmoothSegm;
+		root[L"total_count_points"] = totalCountOfSmoothPoints;
+		for (size_t i = 0; i < countOfSmoothSegm; i++)
+		{
+			web::json::value segmObj;
+			segmObj[L"count_points"] = (*countOfPointsInSmoothSegm)[i];
+			auto array = segmObj.array();
+			for (size_t j = 0; j < (*countOfPointsInSmoothSegm)[i]; j++)
+			{
+				web::json::value x;
+				web::json::value y;
+
+				x = web::json::value::number(X(*(segmented_curve)[i])[j]);
+				y = web::json::value::number(Y(*(segmented_curve)[i])[j]);
+
+				web::json::value pointXY;
+				pointXY[L"X"] = x;
+				pointXY[L"Y"] = y;
+
+				array[j] = pointXY;
+			}
+			segmObj[L"segment"] = array;
+			array_segments[i] = segmObj;
+		}
+		root[L"segments"] = array_segments;
+		cout << "We are ready to reply" << endl;
+		request.reply(status_codes::OK, root);
 		return;
 	}
 	/*std::cout << utility::conversions::to_utf8string(request.to_string()) << endl;*/
