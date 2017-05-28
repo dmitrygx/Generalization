@@ -73,6 +73,20 @@ void GeneralizationCurve::InitializeClassMembers(void)
 	};
 }
 
+void GeneralizationCurve::UtilInitializeClassMembers()
+{
+	UtilComputeDistances[StdMath] = [this](curve* Obj,
+		uint32_t countOfPoints,
+		std::vector<double> *distances) {
+		return this->UtilComputeDistancesMath(Obj, countOfPoints, distances);
+	};
+	UtilComputeDistances[IntelMklMath] = [this](curve* Obj,
+		uint32_t countOfPoints,
+		std::vector<double> *distances) {
+		return this->UtilComputeDistancesMkl(Obj, countOfPoints, distances);
+	};
+}
+
 GeneralizationCurve::GeneralizationCurve()
 {
 	C = 0.5;
@@ -209,16 +223,66 @@ double_t GeneralizationCurve::ComputeDistancesMkl(void)
 	return sum;
 }
 
+double_t GeneralizationCurve::UtilComputeDistancesMath(curve* Obj, uint32_t countOfPoints,
+						       std::vector<double> *distances)
+{
+	double_t sum = 0;
+	std::vector<double> dist(*distances);
+	for (uint32_t i = 0; i < countOfPoints - 1; i++)
+	{
+		dist[i] = sqrt(((X(*Obj)[i + 1] - X(*Obj)[i]) * (X(*Obj)[i + 1] - X(*Obj)[i])) +
+			((Y(*Obj)[i + 1] - Y(*Obj)[i]) * (Y(*Obj)[i + 1] - Y(*Obj)[i])));
+
+		sum += dist[i];
+	}
+	return sum;
+}
+
+double_t GeneralizationCurve::UtilComputeDistancesMkl(curve* Obj, uint32_t countOfPoints,
+						      std::vector<double> *distances)
+{
+	double_t sum = 0;
+	std::vector<double> dist(*distances);
+	for (uint32_t i = 0; i < countOfPoints - 1; i++)
+	{
+		double_t PointSubX = (X(*Obj)[i + 1] - X(*Obj)[i]);
+		double_t PointSubY = (Y(*Obj)[i + 1] - Y(*Obj)[i]);
+		double_t PointX2 = PointSubX*PointSubX, PointY2 = PointSubY*PointSubY, Point2Sum;
+		Point2Sum = PointX2 + PointY2;
+		vmdSqrt(1, &Point2Sum, &dist[i], 0);
+
+		sum += dist[i];
+	}
+	return sum;
+}
+
 double_t GeneralizationCurve::ComputeAvarageDistance()
 {
-	double_t sum = ComputeDistances[0]();
+	double_t sum = ComputeDistances[math_type]();
 
 	return sum / (CountPoints - 1);
+}
+
+double_t GeneralizationCurve::UtilComputeAvarageDistance(curve* Obj,
+							 uint32_t countOfPoints,
+							 std::vector<double> *distances)
+{
+	double_t sum = UtilComputeDistances[math_type](Obj, countOfPoints, distances);
+
+	return sum / (countOfPoints - 1);
 }
 
 double_t GeneralizationCurve::ComputeRadius(double_t averageDistance)
 {
 	return C * ComputeAvarageDistance();
+}
+
+double_t GeneralizationCurve::UtilComputeRadius(double coeff,
+						curve* Obj,
+						uint32_t countOfPoints,
+						std::vector<double> *distances)
+{
+	return coeff * UtilComputeAvarageDistance(Obj, countOfPoints, distances);
 }
 
 bool GeneralizationCurve::BelongPoints(point point1, point point2, point current)
@@ -1547,6 +1611,112 @@ void GeneralizationCurve::Smoothing()
 		Y(*PointsAfterSmoothing[i]).push_back(
 			Y(*PointsAfterSimplification[i])[CountOfPointsAfterSimplification[i] - 1]);
 	}
+}
+
+double_t GeneralizationCurve::ComputeSinuosityCoeff(curve *Obj,
+						    uint32_t countOfPoints,
+						    uint32_t numOfSegm)
+{
+	curve *segments = new curve[numOfSegm];
+	std::vector<double_t> *distances = new std::vector<double_t>[numOfSegm];
+	std::vector<double_t> sumOfDistances;
+	std::vector<double_t> boundDist;
+	std::vector<double_t> Ksegm;
+	std::vector<uint32_t> objSizes;
+	double_t K = 0;
+	uint32_t numPointsPerSegm = countOfPoints / numOfSegm;
+	uint32_t remainPart = countOfPoints % numOfSegm;
+	uint32_t iter = 0;
+
+	boundDist.resize(numOfSegm);
+	Ksegm.resize(numOfSegm);
+	objSizes.resize(numOfSegm);
+	sumOfDistances.resize(numOfSegm);
+
+	if (remainPart > 0)
+	{
+		for (uint32_t i = 0; i < (numOfSegm - 1); i++)
+		{
+			distances[i].resize(numPointsPerSegm - 1);
+			objSizes[i] = numPointsPerSegm;
+			X(segments[i]).resize(numPointsPerSegm);
+			Y(segments[i]).resize(numPointsPerSegm);
+
+			for (uint32_t j = 0; j < numPointsPerSegm; j++)
+			{
+				X(segments[i])[j] = X(*Obj)[iter];
+				Y(segments[i])[j] = Y(*Obj)[iter];
+				iter++;
+			}
+
+			sumOfDistances[i] = UtilComputeDistances[math_type](
+				&segments[i],
+				objSizes[i],
+				&distances[i]
+			);
+			boundDist[i] = sqrt(
+				((X(segments[i])[numPointsPerSegm - 1] - X(segments[i])[0]) *
+				 (X(segments[i])[numPointsPerSegm - 1] - X(segments[i])[0])) +
+				((Y(segments[i])[numPointsPerSegm - 1] - Y(segments[i])[0]) *
+				 (Y(segments[i])[numPointsPerSegm - 1] - Y(segments[i])[0]))
+			);
+			Ksegm[i] = sumOfDistances[i] / boundDist[i];
+		}
+		distances[numOfSegm - 1].resize(remainPart - 1);
+		objSizes[numOfSegm - 1] = remainPart;
+		X(segments[numOfSegm - 1]).resize(remainPart);
+		Y(segments[numOfSegm - 1]).resize(remainPart);
+
+		for (uint32_t j = 0; j < remainPart; j++)
+		{
+			X(segments[numOfSegm - 1])[j] = X(*Obj)[iter];
+			Y(segments[numOfSegm - 1])[j] = Y(*Obj)[iter];
+			iter++;
+		}
+
+		sumOfDistances[numOfSegm - 1] = UtilComputeDistances[math_type](
+			&segments[numOfSegm - 1],
+			objSizes[numOfSegm - 1],
+			&distances[numOfSegm - 1]
+		);
+		boundDist[numOfSegm - 1] = sqrt(
+			((X(segments[numOfSegm - 1])[remainPart - 1] - X(segments[numOfSegm - 1])[0]) *
+			 (X(segments[numOfSegm - 1])[remainPart - 1] - X(segments[numOfSegm - 1])[0])) +
+			((Y(segments[numOfSegm - 1])[remainPart - 1] - Y(segments[numOfSegm - 1])[0]) *
+			 (Y(segments[numOfSegm - 1])[remainPart - 1] - Y(segments[numOfSegm - 1])[0]))
+		);
+
+		Ksegm[numOfSegm - 1] = sumOfDistances[numOfSegm - 1] / boundDist[numOfSegm - 1];
+	}
+	else
+	{
+		for (uint32_t i = 0; i < numOfSegm; i++)
+		{
+			distances[i].resize(numPointsPerSegm - 1);
+			objSizes[i] = numPointsPerSegm;
+			X(segments[numOfSegm - 1]).resize(numPointsPerSegm);
+			Y(segments[numOfSegm - 1]).resize(numPointsPerSegm);
+
+			sumOfDistances[i] = UtilComputeDistances[math_type](
+				&segments[i],
+				objSizes[i],
+				&distances[i]
+			);
+			boundDist[i] = sqrt(
+				((X(segments[i])[numPointsPerSegm - 1] - X(segments[i])[0]) *
+				 (X(segments[i])[numPointsPerSegm - 1] - X(segments[i])[0])) +
+				((Y(segments[i])[numPointsPerSegm - 1] - Y(segments[i])[0]) *
+				 (Y(segments[i])[numPointsPerSegm - 1] - Y(segments[i])[0]))
+			);
+			Ksegm[i] = sumOfDistances[i] / boundDist[i];
+		}
+	}
+
+	for (uint32_t i = 0; i < numOfSegm; i++)
+		K += Ksegm[i];
+	K /= numOfSegm;
+
+	return K;
 }
 
 GeneralizationCurve::~GeneralizationCurve()

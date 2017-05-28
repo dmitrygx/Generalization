@@ -52,7 +52,9 @@ protected:
 		SEGMENTATION_CURVE		= 3,
 		SIMPLIFICATION_CURVE		= 4,
 		SMOOTHING_CURVE			= 5,
-		SAVE_CURVE			= 6
+		GENERALIZE_CURVE		= 6,
+		SAVE_CURVE			= 7,
+		METRICS				= 8
 	} Objects_t;
 
 	map <string_t, Objects_t> allowedPath;

@@ -73,6 +73,11 @@ private:
 	std::vector<uint32_t> CountOfPointsAfterSmoothing;
 	uint32_t TotalCountOfPointsAfterSmoothing;
 
+	double InitialSinuosityCoef;
+	double ResultSinuosityCoef;
+
+
+
 	curve* CurveDup(curve *fromCurve);
 	
 	double_t ComputeDistancesMath(void);
@@ -118,6 +123,36 @@ private:
 	void SimplificationMkl(void);
 
 	void InitializeClassMembers(void);
+
+
+	/* Utility */
+	void UtilInitializeClassMembers();
+		/* Distances */
+	double_t UtilComputeDistancesMath(curve* Obj, uint32_t countOfPoints,
+					  std::vector<double> *distances);
+	double_t UtilComputeDistancesMkl(curve* Obj, uint32_t countOfPoints,
+					 std::vector<double> *distances);
+	std::function<double_t(curve* Obj, uint32_t countOfPoints,
+		std::vector<double> *distances)> UtilComputeDistances[MaxMath];
+		/* ~Distances */
+		/* Avg Distances */
+	double_t UtilComputeAvarageDistance(curve* Obj,
+					    uint32_t countOfPoints,
+					    std::vector<double> *distances);
+		/* ~Avg Distances */
+		/* Radius */
+	double_t UtilComputeRadius(double coeff,
+				   curve* Obj,
+				   uint32_t countOfPoints,
+				   std::vector<double> *distances);
+		/* ~Radius */
+		/* Intersection - (It utilizes already implemented algorithms,
+		 * because they're suitable enough) */
+	std::function<point*(point point1, point point2,
+		double_t radius, point pointCircle)> UtilCheckInterSection[MaxMath];
+		/* ~Intersection */
+
+	/* ~Utility */
 public:
 	GeneralizationCurve();
 	GeneralizationCurve(double_t C_ = 0.5, uint32_t Np_ = 500,
@@ -178,6 +213,11 @@ public:
 	void Segmentation();
 	void Simplification();
 	void Smoothing();
+
+	double_t ComputeSinuosityCoeff(curve *Obj,
+				       uint32_t countOfPoints,
+				       uint32_t numOfSegm);
+
 	virtual ~GeneralizationCurve();
 };
 
