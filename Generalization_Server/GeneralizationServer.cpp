@@ -819,6 +819,7 @@ void GeneralizationServer::handle_request(http_request request,
 		}
 		root[L"segments"] = array_segments;
 		root[L"time"] = requested_curve->GetsmoothingTimer();
+		root[L"overall_time"] = requested_curve->GettotalTimer();
 		cout << "We are ready to reply" << endl;
 		request.reply(status_codes::OK, root);
 		return;
