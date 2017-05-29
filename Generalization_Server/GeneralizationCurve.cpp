@@ -1585,14 +1585,16 @@ void GeneralizationCurve::Smoothing()
 	CountOfPointsAfterSmoothing.resize(ResultSegmentCount);
 	PointsAfterSmoothing = new curve*[ResultSegmentCount];
 	TotalCountOfPointsAfterSmoothing = 0;
+	std::atomic_uint_fast32_t total_count_atomic{ 0 };
 
+#pragma omp parallel for if ((this->parallelism_enabled) && (ResultSegmentCount >= 4))
 	for (uint32_t i = 0; i < ResultSegmentCount; ++i)
 	{
 		CountOfPointsAfterSmoothing[i] = CountOfPointsAfterSimplification[i];
 		/*X(*PointsAfterSmoothing[i]).resize(CountOfPointsAfterSmoothing[i]);
 		Y(*PointsAfterSmoothing[i]).resize(CountOfPointsAfterSmoothing[i]);*/
 
-		TotalCountOfPointsAfterSmoothing += CountOfPointsAfterSmoothing[i];
+		total_count_atomic.fetch_add(CountOfPointsAfterSmoothing[i]);
 
 		PointsAfterSmoothing[i] = new curve;
 
@@ -1611,6 +1613,8 @@ void GeneralizationCurve::Smoothing()
 		Y(*PointsAfterSmoothing[i]).push_back(
 			Y(*PointsAfterSimplification[i])[CountOfPointsAfterSimplification[i] - 1]);
 	}
+
+	TotalCountOfPointsAfterSmoothing = total_count_atomic;
 }
 
 double_t GeneralizationCurve::ComputeSinuosityCoeff(curve *Obj,
