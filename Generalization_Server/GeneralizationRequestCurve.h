@@ -44,7 +44,7 @@ if (GeneralizationLogging::GetVerbose())				\
 	GeneralizationLogging::fout << "\t"name": " <<			\
 	std::setprecision(7) << this->Get##time##Timer() << std::endl;
 
-#define VerboseTimeResults(timer)							\
+#define VerboseTimeResults()								\
 if (GeneralizationLogging::GetOutputResults())						\
 {											\
 	GeneralizationLogging::fout << "Curve " << Code << ":" << Number << std::endl;	\
@@ -132,7 +132,7 @@ public:
 
 	void OutputResults(void)
 	{
-		VerboseTimeResults(timer);
+		/*VerboseTimeResults();*/
 	}
 };
 

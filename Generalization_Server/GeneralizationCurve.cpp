@@ -850,31 +850,10 @@ void GeneralizationCurve::SegmentationMkl()
 	}
 
 	SegmentCountPoints.resize(CountOfSegments);
-
-	uint32_t k = 0;
-	for (uint32_t i = 0; i < CountOfSegments; i++)
-	{
-		uint32_t N = Ninit;
-		if ((flag) && (i == CountOfSegments - 1))
-		{
-			N = AdductionCount % Ninit;
-		}
-		for (uint32_t j = 0; j < N; j++)
-		{
-			X(InitSegments[i])[j] = X(*AdductionPoints)[k];
-			Y(InitSegments[i])[j] = Y(*AdductionPoints)[k];
-			k++;
-		}
-		SegmentCountPoints[i] = N;
-	}
-
-	k = 0;
 	std::vector<std::vector<double_t>> AngleOfRotation;
 	AngleOfRotation.resize(CountOfSegments);
-	for (uint32_t i = 0; i < CountOfSegments; i++)
-	{
-		AngleOfRotation[i].resize(Ninit);
-	}
+
+	uint32_t k = 0, m = 0;
 
 	std::vector<double_t> RotationOfSegment;
 	RotationOfSegment.resize(CountOfSegments);
@@ -889,8 +868,23 @@ void GeneralizationCurve::SegmentationMkl()
 	std::fill_n(N, CountOfSegments - 1, Ninit);
 	N[CountOfSegments - 1] = (flag) ? AdductionCount % Ninit : N[CountOfSegments - 1];
 
-	for (uint32_t i = 0; i < CountOfSegments; i++)
+//#pragma omp parallel for if ((parallelism_enabled) && (CountOfSegments >= 4))
+	for (int32_t i = 0; i < CountOfSegments; i++)
 	{
+		uint32_t Npoints = Ninit;
+		if ((flag) && (i == CountOfSegments - 1))
+		{
+			Npoints = AdductionCount % Ninit;
+		}
+		for (uint32_t j = 0; j < Npoints; j++)
+		{
+			X(InitSegments[i])[j] = X(*AdductionPoints)[m];
+			Y(InitSegments[i])[j] = Y(*AdductionPoints)[m];
+			m++;
+		}
+		SegmentCountPoints[i] = Npoints;
+		AngleOfRotation[i].resize(Ninit);
+
 		for (uint32_t j = 1; j < N[i] - 1; j++)
 		{
 			double_t topLeft = (X(InitSegments[i])[j + 1] - X(InitSegments[i])[j]) *
@@ -1588,7 +1582,7 @@ void GeneralizationCurve::Smoothing()
 	std::atomic_uint_fast32_t total_count_atomic{ 0 };
 
 #pragma omp parallel for if ((this->parallelism_enabled) && (ResultSegmentCount >= 4))
-	for (uint32_t i = 0; i < ResultSegmentCount; ++i)
+	for (int32_t i = 0; i < ResultSegmentCount; ++i)
 	{
 		CountOfPointsAfterSmoothing[i] = CountOfPointsAfterSimplification[i];
 		/*X(*PointsAfterSmoothing[i]).resize(CountOfPointsAfterSmoothing[i]);
