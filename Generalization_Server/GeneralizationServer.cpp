@@ -630,6 +630,7 @@ void GeneralizationServer::handle_request(http_request request,
 			array[i] = pointXY;
 		}
 		root[L"points"] = array;
+		root[L"time"] = requested_curve->GetadductionTimer();
 		cout << "We are ready to reply" << endl;
 		request.reply(status_codes::OK, root);
 		return;
@@ -691,6 +692,7 @@ void GeneralizationServer::handle_request(http_request request,
 			array_segments[i] = segmObj;
 		}
 		root[L"segments"] = array_segments;
+		root[L"time"] = requested_curve->GetsegmentationTimer();
 		cout << "We are ready to reply" << endl;
 		request.reply(status_codes::OK, root);
 		return;
@@ -753,6 +755,7 @@ void GeneralizationServer::handle_request(http_request request,
 			array_segments[i] = segmObj;
 		}
 		root[L"segments"] = array_segments;
+		root[L"time"] = requested_curve->GetsimplificationTimer();
 		cout << "We are ready to reply" << endl;
 		request.reply(status_codes::OK, root);
 		return;
@@ -775,7 +778,7 @@ void GeneralizationServer::handle_request(http_request request,
 		auto request_result = found_result->second;
 		uint32_t requested_curve_number = std::stoi(request_curve);
 		uint32_t requested_curve_result = std::stoi(request_result);
-		wcout << U("Received request SMOOTHING_CURV(") << request_result << U("): ")
+		wcout << U("Received request SMOOTHING_CURVE(") << request_result << U("): ")
 			<< request_curve << " ("
 			<< requested_curve_number << ")" << endl;
 		GeneralizationRequestCurve *requested_curve = &Curves[requested_curve_number];
@@ -815,6 +818,7 @@ void GeneralizationServer::handle_request(http_request request,
 			array_segments[i] = segmObj;
 		}
 		root[L"segments"] = array_segments;
+		root[L"time"] = requested_curve->GetsmoothingTimer();
 		cout << "We are ready to reply" << endl;
 		request.reply(status_codes::OK, root);
 		return;
@@ -909,6 +913,8 @@ void GeneralizationServer::handle_request(http_request request,
 			array_segments[i] = segmObj;
 		}
 		root[L"segments"] = array_segments;
+		root[L"time"] = requested_curve->GetsmoothingTimer();
+		root[L"overall_time"] = requested_curve->GettotalTimer();
 		cout << "We are ready to reply" << endl;
 		request.reply(status_codes::OK, root);
 		return;
