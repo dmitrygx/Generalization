@@ -98,6 +98,7 @@ GeneralizationCurve::GeneralizationCurve()
 	parallelism_enabled = 0;
 
 	InitializeClassMembers();
+	UtilInitializeClassMembers();
 }
 
 GeneralizationCurve::GeneralizationCurve(double_t C_, uint32_t Np_,
@@ -112,6 +113,7 @@ GeneralizationCurve::GeneralizationCurve(double_t C_, uint32_t Np_,
 	parallelism_enabled = parallelism;
 
 	InitializeClassMembers();
+	UtilInitializeClassMembers();
 }
 
 curve* GeneralizationCurve::CurveDup(curve *fromCurve)
@@ -190,6 +192,12 @@ void GeneralizationCurve::BuildCurve(uint32_t countOfPoints, curve *newCurve)
 
 	Distance.resize(CountPoints - 1);
 
+	if (math_type == StdMath)
+		GridMath.resize(10000);
+	else
+		GridMkl = (bool *)mkl_calloc(1, dimension[0] * dimension[1] * sizeof(*GridMkl),
+					     64);
+
 	AverageDistance = 0;
 	Radius = 0;
 }
@@ -227,13 +235,12 @@ double_t GeneralizationCurve::UtilComputeDistancesMath(curve* Obj, uint32_t coun
 						       std::vector<double> *distances)
 {
 	double_t sum = 0;
-	std::vector<double> dist(*distances);
 	for (uint32_t i = 0; i < countOfPoints - 1; i++)
 	{
-		dist[i] = sqrt(((X(*Obj)[i + 1] - X(*Obj)[i]) * (X(*Obj)[i + 1] - X(*Obj)[i])) +
+		(*distances)[i] = sqrt(((X(*Obj)[i + 1] - X(*Obj)[i]) * (X(*Obj)[i + 1] - X(*Obj)[i])) +
 			((Y(*Obj)[i + 1] - Y(*Obj)[i]) * (Y(*Obj)[i + 1] - Y(*Obj)[i])));
 
-		sum += dist[i];
+		sum += (*distances)[i];
 	}
 	return sum;
 }
@@ -242,16 +249,15 @@ double_t GeneralizationCurve::UtilComputeDistancesMkl(curve* Obj, uint32_t count
 						      std::vector<double> *distances)
 {
 	double_t sum = 0;
-	std::vector<double> dist(*distances);
 	for (uint32_t i = 0; i < countOfPoints - 1; i++)
 	{
 		double_t PointSubX = (X(*Obj)[i + 1] - X(*Obj)[i]);
 		double_t PointSubY = (Y(*Obj)[i + 1] - Y(*Obj)[i]);
 		double_t PointX2 = PointSubX*PointSubX, PointY2 = PointSubY*PointSubY, Point2Sum;
 		Point2Sum = PointX2 + PointY2;
-		vmdSqrt(1, &Point2Sum, &dist[i], 0);
+		vmdSqrt(1, &Point2Sum, &(*distances)[i], 0);
 
-		sum += dist[i];
+		sum += (*distances)[i];
 	}
 	return sum;
 }
@@ -1046,16 +1052,12 @@ bool GeneralizationCurve::IntersectionLineAndSquare(point *p1, point *p2, std::v
 	return false;
 }
 
-#define Grid(i,j) Grid[(i)* dimension[1] + (j)]
+#define Grid(i,j) GridMkl[(i)* dimension[1] + (j)]
 
 uint32_t GeneralizationCurve::ComputeQuadricsMkl(uint32_t CurrentSegment, double_t dist)
 {
 	uint32_t CountOfSquare = 0;
 	// std::vector<std::vector<bool>> Grid;
-	MKL_LONG dimension[2] = { 10000, 10000 };
-	bool *Grid = (bool *)mkl_calloc(1, dimension[0] * dimension[1] * sizeof(*Grid),
-					64);
-
 	for (uint32_t k = 0; k < CountOfAdductionPointsInSegment[CurrentSegment] - 1; ++k)
 	{
 		double_t A = Y(AdductionPointsInSegment[CurrentSegment])[k] - Y(AdductionPointsInSegment[CurrentSegment])[k + 1];
@@ -1107,7 +1109,7 @@ uint32_t GeneralizationCurve::ComputeQuadricsMkl(uint32_t CurrentSegment, double
 
 				X(point_Kplus1) = X(AdductionPointsInSegment[CurrentSegment])[k + 1];
 				Y(point_Kplus1) = Y(AdductionPointsInSegment[CurrentSegment])[k + 1];
-			
+
 				if (IntersectionLineAndSquare(&point_K, &point_Kplus1, &points))
 				{
 #if 0
@@ -1124,8 +1126,8 @@ uint32_t GeneralizationCurve::ComputeQuadricsMkl(uint32_t CurrentSegment, double
 			}
 		}
 	}
-	
-	mkl_free(Grid);
+	memset(GridMkl, 0, dimension[0] * dimension[1] * sizeof(*GridMkl));
+
 	return CountOfSquare;
 }
 
@@ -1133,9 +1135,6 @@ uint32_t GeneralizationCurve::ComputeQuadricsMath(uint32_t CurrentSegment, doubl
 {
 	uint32_t CountOfSquare = 0;
 	// std::vector<std::vector<bool>> Grid;
-	std::vector<std::map<uint32_t, bool>> Grid;
-	Grid.resize(10000);
-
 	for (uint32_t k = 0; k < CountOfAdductionPointsInSegment[CurrentSegment] - 1; ++k)
 	{
 		double_t A = Y(AdductionPointsInSegment[CurrentSegment])[k] - Y(AdductionPointsInSegment[CurrentSegment])[k + 1];
@@ -1170,15 +1169,18 @@ uint32_t GeneralizationCurve::ComputeQuadricsMath(uint32_t CurrentSegment, doubl
 
 				if (IntersectionLineAndSquare(&point_K, &point_Kplus1, &points))
 				{
-					if (!Grid[i][j])
+					if (!GridMath[i][j])
 					{
 						CountOfSquare++;
 					}
-					Grid[i][j] = true;
+					GridMath[i][j] = true;
 				}
 			}
 		}
 	}
+
+	for (uint32_t i = 0; i < dimension[0]; i++)
+		GridMath[i].clear();
 
 	return CountOfSquare;
 }
@@ -1367,20 +1369,9 @@ curve* GeneralizationCurve::SimplificationOfSegmentMath(curve* AdductionPointsIn
 	uint32_t *CountOfAdductionPointsInSegment, uint32_t i, uint32_t &CountOfPoints)
 {
 	uint32_t Len = *CountOfAdductionPointsInSegment;
-	curve PointsInSegment;
-	X(PointsInSegment).resize(Len);
-	Y(PointsInSegment).resize(Len);
-
-	uint32_t k = 0;
-	for (uint32_t j = 0; j < Len; ++j)
-	{
-		X(PointsInSegment)[j] = X(*AdductionPointsInSegment)[k];
-		Y(PointsInSegment)[j] = Y(*AdductionPointsInSegment)[k];
-		k++;
-	}
 	double_t H = pow(M, 2 - AngularCoeffRegresLine[i]);
 
-	curve* NewPoints = SimplificationOfCurve(&PointsInSegment, Len, H, CountOfPoints);
+	curve* NewPoints = SimplificationOfCurve(AdductionPointsInSegment, Len, H, CountOfPoints);
 
 	return NewPoints;
 }
@@ -1389,22 +1380,11 @@ curve* GeneralizationCurve::SimplificationOfSegmentMkl(curve* AdductionPointsInS
 	uint32_t *CountOfAdductionPointsInSegment, uint32_t i, uint32_t &CountOfPoints)
 {
 	uint32_t Len = *CountOfAdductionPointsInSegment;
-	curve PointsInSegment;
-	X(PointsInSegment).resize(Len);
-	Y(PointsInSegment).resize(Len);
-
-	uint32_t k = 0;
-	for (uint32_t j = 0; j < Len; ++j)
-	{
-		X(PointsInSegment)[j] = X(*AdductionPointsInSegment)[k];
-		Y(PointsInSegment)[j] = Y(*AdductionPointsInSegment)[k];
-		k++;
-	}
 
 	double_t H;
 	vmdPowx(1, &M, 2 - AngularCoeffRegresLine[i], &H, 0);
 
-	curve* NewPoints = SimplificationOfCurve(&PointsInSegment, Len, H, CountOfPoints);
+	curve* NewPoints = SimplificationOfCurve(AdductionPointsInSegment, Len, H, CountOfPoints);
 
 	return NewPoints;
 }
@@ -1416,25 +1396,11 @@ void GeneralizationCurve::Simplification()
 
 void GeneralizationCurve::SimplificationMath()
 {
-	uint32_t k = 8;
+	const uint32_t k = 8;
 	std::vector<std::vector<uint32_t>> NE;
 	std::vector<std::vector<double_t>> Dbc; // Box-Counting
 	NE.resize(ResultSegmentCount);
 	Dbc.resize(ResultSegmentCount);
-	// UInt32[, ] NE = new UInt32[ResultSegmentCount, k];
-	// Double[, ] Dbc = new Double[ResultSegmentCount, k]; // Box-Counting
-#pragma omp parallel for if ((parallelism_enabled) && (ResultSegmentCount >= 4))
-	for (int i = 0; i < ResultSegmentCount; ++i)
-	{
-		/*std::cout << omp_get_num_threads() << std::endl;*/
-		NE[i].resize(k);
-		Dbc[i].resize(k);
-		for (uint32_t j = 0; j < k; ++j)
-		{
-			NE[i][j] = (ComputeQuadricsMath(i, Radius * (j + 1)));
-			Dbc[i][j] = (log10(NE[i][j]) / log10(1 / (Radius * (j + 1))));
-		}
-	}
 
 	double_t X = 0;
 	double_t X2 = 0;
@@ -1444,6 +1410,13 @@ void GeneralizationCurve::SimplificationMath()
 	LinearRegK.resize(ResultSegmentCount);
 	LinearRegB.resize(ResultSegmentCount);
 	AngularCoeffRegresLine.resize(ResultSegmentCount);
+	// UInt32[, ] NE = new UInt32[ResultSegmentCount, k];
+	// Double[, ] Dbc = new Double[ResultSegmentCount, k]; // Box-Counting
+
+	double_t dist[k] = { Radius * 1, Radius * 2, Radius * 3, Radius * 4,
+		Radius * 5, Radius * 6, Radius * 7, Radius * 8 };
+	double_t reverse_dist[k] = { (1 / dist[0]), (1 / dist[1]), (1 / dist[2]), (1 / dist[3]),
+		(1 / dist[4]), (1 / dist[5]), (1 / dist[6]), (1 / dist[7]) };
 
 	for (uint32_t i = 0; i < k; ++i)
 	{
@@ -1458,11 +1431,15 @@ void GeneralizationCurve::SimplificationMath()
 	PointsAfterSimplification = new curve*[ResultSegmentCount];
 	CountOfPointsAfterSimplification.resize(ResultSegmentCount);
 
-#pragma omp parallel for if ((parallelism_enabled) && (ResultSegmentCount >= 4))
+//#pragma omp parallel for if ((parallelism_enabled) && (ResultSegmentCount >= 4))
 	for (int32_t i = 0; i < ResultSegmentCount; ++i)
 	{
-		for (int32_t j = 0; j < k; ++j)
+		NE[i].resize(k);
+		Dbc[i].resize(k);
+		for (uint32_t j = 0; j < k; ++j)
 		{
+			NE[i][j] = (ComputeQuadricsMath(i, Radius * (j + 1)));
+			Dbc[i][j] = (log10(NE[i][j]) / log10(1 / (Radius * (j + 1))));
 			Y[i] += Dbc[i][j];
 		}
 		Y[i] /= 10;
@@ -1530,7 +1507,6 @@ void GeneralizationCurve::SimplificationMkl()
 	vmdLog10(k, (const double_t *)reverse_dist, reverse_dist_log10, 0);
 
 	mkl_free(dist2);
-	mkl_free(reverse_dist_log10);
 
 	X /= 10;
 	X2 /= 10;
@@ -1570,6 +1546,7 @@ void GeneralizationCurve::SimplificationMkl()
 		mkl_free(Dbc[i]);
 	}
 	TotalCountOfPointsAfterSimplification = total_count_atomic;
+	mkl_free(reverse_dist_log10);
 	mkl_free(NE);
 	mkl_free(Dbc);
 }
@@ -1659,6 +1636,8 @@ double_t GeneralizationCurve::ComputeSinuosityCoeff(curve *Obj,
 				 (Y(segments[i])[numPointsPerSegm - 1] - Y(segments[i])[0]))
 			);
 			Ksegm[i] = sumOfDistances[i] / boundDist[i];
+
+			K += Ksegm[i];
 		}
 		distances[numOfSegm - 1].resize(remainPart - 1);
 		objSizes[numOfSegm - 1] = remainPart;
@@ -1685,6 +1664,7 @@ double_t GeneralizationCurve::ComputeSinuosityCoeff(curve *Obj,
 		);
 
 		Ksegm[numOfSegm - 1] = sumOfDistances[numOfSegm - 1] / boundDist[numOfSegm - 1];
+		K += Ksegm[numOfSegm - 1];
 	}
 	else
 	{
@@ -1692,8 +1672,15 @@ double_t GeneralizationCurve::ComputeSinuosityCoeff(curve *Obj,
 		{
 			distances[i].resize(numPointsPerSegm - 1);
 			objSizes[i] = numPointsPerSegm;
-			X(segments[numOfSegm - 1]).resize(numPointsPerSegm);
-			Y(segments[numOfSegm - 1]).resize(numPointsPerSegm);
+			X(segments[i]).resize(numPointsPerSegm);
+			Y(segments[i]).resize(numPointsPerSegm);
+
+			for (uint32_t j = 0; j < numPointsPerSegm; j++)
+			{
+				X(segments[i])[j] = X(*Obj)[iter];
+				Y(segments[i])[j] = Y(*Obj)[iter];
+				iter++;
+			}
 
 			sumOfDistances[i] = UtilComputeDistances[math_type](
 				&segments[i],
@@ -1707,11 +1694,11 @@ double_t GeneralizationCurve::ComputeSinuosityCoeff(curve *Obj,
 				 (Y(segments[i])[numPointsPerSegm - 1] - Y(segments[i])[0]))
 			);
 			Ksegm[i] = sumOfDistances[i] / boundDist[i];
+
+			K += Ksegm[i];
 		}
 	}
 
-	for (uint32_t i = 0; i < numOfSegm; i++)
-		K += Ksegm[i];
 	K /= numOfSegm;
 
 	return K;
@@ -1733,4 +1720,6 @@ GeneralizationCurve::~GeneralizationCurve()
 		delete[] PointsAfterSmoothing[i];
 	}
 	delete[] PointsAfterSmoothing;
+
+	mkl_free(GridMkl);
 }

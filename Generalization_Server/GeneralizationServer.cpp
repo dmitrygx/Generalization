@@ -820,6 +820,19 @@ void GeneralizationServer::handle_request(http_request request,
 		root[L"segments"] = array_segments;
 		root[L"time"] = requested_curve->GetsmoothingTimer();
 		root[L"overall_time"] = requested_curve->GettotalTimer();
+
+		curve *source_curve = requested_curve->GetSouceCurve();
+		double_t source_curve_coeff = requested_curve->ComputeSinuosityCoeff(source_curve,
+			X(*source_curve).size(), countOfSmoothSegm);
+
+		curve *result_curve = requested_curve->GetResultCurve();
+		double_t result_curve_coeff = requested_curve->ComputeSinuosityCoeff(result_curve,
+			X(*result_curve).size(), countOfSmoothSegm);
+		delete result_curve;
+
+		root[L"sinuosity_coef_source"] = source_curve_coeff;
+		root[L"sinuosity_coef_result"] = result_curve_coeff;
+
 		cout << "We are ready to reply" << endl;
 		request.reply(status_codes::OK, root);
 		return;
@@ -916,6 +929,19 @@ void GeneralizationServer::handle_request(http_request request,
 		root[L"segments"] = array_segments;
 		root[L"time"] = requested_curve->GetsmoothingTimer();
 		root[L"overall_time"] = requested_curve->GettotalTimer();
+
+		curve *source_curve = requested_curve->GetSouceCurve();
+		double_t source_curve_coeff = requested_curve->ComputeSinuosityCoeff(source_curve,
+			X(*source_curve).size(), countOfSmoothSegm);
+
+		curve *result_curve = requested_curve->GetResultCurve();
+		double_t result_curve_coeff = requested_curve->ComputeSinuosityCoeff(result_curve,
+			X(*result_curve).size(), countOfSmoothSegm);
+		delete result_curve;
+
+		root[L"sinuosity_coef_source"] = source_curve_coeff;
+		root[L"sinuosity_coef_result"] = result_curve_coeff;
+
 		cout << "We are ready to reply" << endl;
 		request.reply(status_codes::OK, root);
 		return;
@@ -949,7 +975,7 @@ err:
 void GeneralizationServer::handle_get(http_request request)
 {
 	std::cout << "\nhandle GET\n" << std::endl;
-	
+
 	handle_request(
 		request,
 		[&](json::value & jvalue, json::value & answer)
