@@ -11,6 +11,8 @@
 
 #include "common.h"
 
+#include "mkl.h"
+
 #define X(point) ((point).first)
 #define Y(point) ((point).second)
 
@@ -76,7 +78,9 @@ private:
 	double InitialSinuosityCoef;
 	double ResultSinuosityCoef;
 
-
+	std::vector<std::map<uint32_t, bool>> GridMath;
+	MKL_LONG dimension[2] = { 10000, 10000 };
+	bool *GridMkl;
 
 	curve* CurveDup(curve *fromCurve);
 	
@@ -213,6 +217,25 @@ public:
 	void Segmentation();
 	void Simplification();
 	void Smoothing();
+
+	curve* GetResultCurve()
+	{
+		curve *resultCurve = new curve;
+		uint32_t iter = 0;
+		X(*resultCurve).resize(TotalCountOfPointsAfterSmoothing);
+		Y(*resultCurve).resize(TotalCountOfPointsAfterSmoothing);
+		
+		for (uint32_t i = 0; i < ResultSegmentCount; i++)
+		{
+			for (uint32_t j = 0; j < CountOfPointsAfterSmoothing[i]; j++)
+			{
+				X(*resultCurve)[iter] = X(*PointsAfterSmoothing[i])[j];
+				Y(*resultCurve)[iter] = Y(*PointsAfterSmoothing[i])[j];
+				iter++;
+			}
+		}
+		return resultCurve;
+	}
 
 	double_t ComputeSinuosityCoeff(curve *Obj,
 				       uint32_t countOfPoints,
