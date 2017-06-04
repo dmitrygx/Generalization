@@ -1108,7 +1108,6 @@ void GeneralizationServer::handle_request(http_request request,
 		}
 		root[L"timers"] = array_timers;
 
-
 		FinalizeBenchmark();
 		cout << "We are ready to reply" << endl;
 		request.reply(status_codes::OK, root);

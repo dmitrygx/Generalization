@@ -9,24 +9,30 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Generalization_Worker", "Ge
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{ED532573-4BAD-408B-8ADC-B6FEABA16C69}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{ED532573-4BAD-408B-8ADC-B6FEABA16C69}.Debug|x64.ActiveCfg = Debug|x64
 		{ED532573-4BAD-408B-8ADC-B6FEABA16C69}.Debug|x64.Build.0 = Debug|x64
 		{ED532573-4BAD-408B-8ADC-B6FEABA16C69}.Debug|x86.ActiveCfg = Debug|Win32
 		{ED532573-4BAD-408B-8ADC-B6FEABA16C69}.Debug|x86.Build.0 = Debug|Win32
+		{ED532573-4BAD-408B-8ADC-B6FEABA16C69}.Release|Any CPU.ActiveCfg = Release|Win32
 		{ED532573-4BAD-408B-8ADC-B6FEABA16C69}.Release|x64.ActiveCfg = Release|x64
 		{ED532573-4BAD-408B-8ADC-B6FEABA16C69}.Release|x64.Build.0 = Release|x64
 		{ED532573-4BAD-408B-8ADC-B6FEABA16C69}.Release|x86.ActiveCfg = Release|Win32
 		{ED532573-4BAD-408B-8ADC-B6FEABA16C69}.Release|x86.Build.0 = Release|Win32
+		{8891F966-3970-465A-8A71-AD93C19C7D52}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{8891F966-3970-465A-8A71-AD93C19C7D52}.Debug|x64.ActiveCfg = Debug|x64
 		{8891F966-3970-465A-8A71-AD93C19C7D52}.Debug|x64.Build.0 = Debug|x64
 		{8891F966-3970-465A-8A71-AD93C19C7D52}.Debug|x86.ActiveCfg = Debug|Win32
 		{8891F966-3970-465A-8A71-AD93C19C7D52}.Debug|x86.Build.0 = Debug|Win32
+		{8891F966-3970-465A-8A71-AD93C19C7D52}.Release|Any CPU.ActiveCfg = Release|Win32
 		{8891F966-3970-465A-8A71-AD93C19C7D52}.Release|x64.ActiveCfg = Release|x64
 		{8891F966-3970-465A-8A71-AD93C19C7D52}.Release|x64.Build.0 = Release|x64
 		{8891F966-3970-465A-8A71-AD93C19C7D52}.Release|x86.ActiveCfg = Release|Win32
