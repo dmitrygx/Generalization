@@ -41,7 +41,7 @@ if (GeneralizationLogging::GetVerbose())				\
 }
 
 #define PrintTimer(name, time)						\
-	GeneralizationLogging::fout << "\t"name": " <<			\
+	GeneralizationLogging::fout << "\t" name ": " <<			\
 	std::setprecision(7) << this->Get##time##Timer() << std::endl;
 
 #define VerboseTimeResults()								\

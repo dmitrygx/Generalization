@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>
+#include <cstdio>
+#include <cstring>
 #include <list>
 #include <vector>
 #include <utility>
@@ -58,7 +60,7 @@ protected:
 	std::vector<uint32_t> SegmentCountPoints;
 
 	std::vector<uint32_t> LocalMax;
-	std::vector<double_t> Integral—haract;
+	std::vector<double_t> IntegralCharact;
 
 	std::vector<curve> AdductionPointsInSegment; // TODO
 	std::vector<uint32_t> CountOfAdductionPointsInSegment;
@@ -79,7 +81,8 @@ protected:
 	double ResultSinuosityCoef;
 
 	std::vector<std::map<uint32_t, bool>> GridMath;
-	MKL_LONG dimension[2] = { 10000, 10000 };
+	MKL_LONG max_val = 10000;
+	MKL_LONG dimension[2] = { max_val, max_val };
 	bool *GridMkl;
 
 	curve* CurveDup(curve *fromCurve);
@@ -161,6 +164,12 @@ protected:
 	void SetAdductionPointsPerSegment(curve* adduction_points,
 		uint32_t pps, uint32_t seg_count);
 public:
+	void SetMaxValue(uint32_t _max_value)
+	{
+		max_val = _max_value;
+		dimension[0] = max_val;
+		dimension[1] = max_val;
+	}
 	GeneralizationCurve();
 	GeneralizationCurve(double_t C_ = 0.5, uint32_t Np_ = 500,
 		uint32_t Ns_ = 50, double_t f_ = 5, uint32_t Ninit_ = 1000,
@@ -200,6 +209,12 @@ public:
 		M = M_;
 	}
 	/* ~Setters */
+
+	static inline
+	void* GenCalloc(size_t num, size_t size, int alignment)
+	{
+		return mkl_malloc(num * size, alignment);
+	}
 
 	/* Getters */
 	curve* GetSouceCurve();

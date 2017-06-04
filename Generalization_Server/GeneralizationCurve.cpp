@@ -5,11 +5,13 @@
 # include <omp.h>
 #endif
 
-#define MKL_INT size_t
-#include "mkl.h"
-
 #define _USE_MATH_DEFINES
 #include <math.h>
+
+#ifndef MKL_INT
+#define MKL_INT size_t
+#endif
+#include "mkl.h"
 
 void GeneralizationCurve::InitializeClassMembers(void)
 {
@@ -216,9 +218,9 @@ void GeneralizationCurve::BuildCurve(uint32_t countOfPoints, curve *newCurve)
 	Distance.resize(CountPoints - 1);
 
 	if (math_type == StdMath)
-		GridMath.resize(10000);
+		GridMath.resize(max_val);
 	else
-		GridMkl = (bool *)mkl_calloc(1, dimension[0] * dimension[1] * sizeof(*GridMkl),
+		GridMkl = (bool *)GenCalloc(1, dimension[0] * dimension[1] * sizeof(*GridMkl),
 					     64);
 
 	AverageDistance = 0;
@@ -228,9 +230,9 @@ void GeneralizationCurve::BuildCurve(uint32_t countOfPoints, curve *newCurve)
 void GeneralizationCurve::InitForBenchmarks()
 {
 	if (math_type == StdMath)
-		GridMath.resize(10000);
+		GridMath.resize(max_val);
 	else
-		GridMkl = (bool *)mkl_calloc(1, dimension[0] * dimension[1] * sizeof(*GridMkl),
+		GridMkl = (bool *)GenCalloc(1, dimension[0] * dimension[1] * sizeof(*GridMkl),
 			64);
 }
 
@@ -717,7 +719,7 @@ void GeneralizationCurve::SegmentationMath()
 	std::vector<double_t> FullRotationOfSegment;
 	FullRotationOfSegment.resize(CountOfSegments);
 
-	IntegralСharact.resize(CountOfSegments);
+	IntegralCharact.resize(CountOfSegments);
 	LocalMax.resize(CountOfSegments); /* Ei */
 	std::fill_n(LocalMax.begin(), CountOfSegments, 0);
 
@@ -754,7 +756,7 @@ void GeneralizationCurve::SegmentationMath()
 			}
 		}
 		FullRotationOfSegment[i] = RotationOfSegment[i] / (2 * M_PI); /* Wi */
-		IntegralСharact[i] = FullRotationOfSegment[i] + f * LocalMax[i]; /* Mi */
+		IntegralCharact[i] = FullRotationOfSegment[i] + f * LocalMax[i]; /* Mi */
 	}
 
 	std::vector<uint32_t> MinSegmentCountPoint;
@@ -790,7 +792,7 @@ void GeneralizationCurve::SegmentationMath()
 		{
 			if (i + 1 != CountOfSegments)
 			{
-				if ((IntegralСharact[i + 1] - IntegralСharact[i] >= -10) && (IntegralСharact[i + 1] - IntegralСharact[i] <= 10))
+				if ((IntegralCharact[i + 1] - IntegralCharact[i] >= -10) && (IntegralCharact[i + 1] - IntegralCharact[i] <= 10))
 				{
 					for (uint32_t j = 0; j < SegmentCountPoints[i]; ++j)
 					{
@@ -898,11 +900,11 @@ void GeneralizationCurve::SegmentationMkl()
 	std::vector<double_t> FullRotationOfSegment;
 	FullRotationOfSegment.resize(CountOfSegments);
 
-	IntegralСharact.resize(CountOfSegments);
+	IntegralCharact.resize(CountOfSegments);
 	LocalMax.resize(CountOfSegments); /* Ei */
 	std::fill_n(LocalMax.begin(), CountOfSegments, 0);
 
-	uint32_t *N = (uint32_t *)mkl_calloc(CountOfSegments, sizeof(*N), 64);
+	uint32_t *N = (uint32_t *)GenCalloc(CountOfSegments, sizeof(*N), 64);
 	std::fill_n(N, CountOfSegments - 1, Ninit);
 	N[CountOfSegments - 1] = (flag) ? AdductionCount % Ninit : N[CountOfSegments - 1];
 
@@ -948,7 +950,7 @@ void GeneralizationCurve::SegmentationMkl()
 				LocalMax[i]++;
 		}
 		FullRotationOfSegment[i] = RotationOfSegment[i] / (2 * M_PI); /* Wi */
-		IntegralСharact[i] = FullRotationOfSegment[i] + f * LocalMax[i]; /* Mi */
+		IntegralCharact[i] = FullRotationOfSegment[i] + f * LocalMax[i]; /* Mi */
 	}
 
 	mkl_free(N);
@@ -987,8 +989,8 @@ void GeneralizationCurve::SegmentationMkl()
 		{
 			if (i + 1 != CountOfSegments)
 			{
-				if ((IntegralСharact[i + 1] - IntegralСharact[i] >= -10) &&
-				    (IntegralСharact[i + 1] - IntegralСharact[i] <= 10))
+				if ((IntegralCharact[i + 1] - IntegralCharact[i] >= -10) &&
+				    (IntegralCharact[i + 1] - IntegralCharact[i] <= 10))
 				{
 					for (uint32_t j = 0; j < SegmentCountPoints[i]; ++j)
 					{
@@ -1463,7 +1465,7 @@ void GeneralizationCurve::SimplificationMath()
 	PointsAfterSimplification = new curve*[ResultSegmentCount];
 	CountOfPointsAfterSimplification.resize(ResultSegmentCount);
 
-//#pragma omp parallel for if ((parallelism_enabled) && (ResultSegmentCount >= 4))
+#pragma omp parallel for if ((parallelism_enabled) && (ResultSegmentCount >= 4))
 	for (int32_t i = 0; i < ResultSegmentCount; ++i)
 	{
 		NE[i].resize(k);
@@ -1500,8 +1502,8 @@ void GeneralizationCurve::SimplificationMkl()
 	//std::vector<std::vector<double_t>> Dbc; // Box-Counting
 	//NE.resize(ResultSegmentCount);
 	//Dbc.resize(ResultSegmentCount);
-	double_t** NE = (double_t **)mkl_calloc(ResultSegmentCount, sizeof(double_t *), 64);
-	double_t** Dbc = (double_t **)mkl_calloc(ResultSegmentCount, sizeof(double_t *), 64); // Box-Counting
+	double_t** NE = (double_t **)GenCalloc(ResultSegmentCount, sizeof(double_t *), 64);
+	double_t** Dbc = (double_t **)GenCalloc(ResultSegmentCount, sizeof(double_t *), 64); // Box-Counting
 
 
 
@@ -1522,8 +1524,8 @@ void GeneralizationCurve::SimplificationMkl()
 
 	/*double_t *dist = (double_t *)mkl_calloc(k, sizeof(*dist), 64);*/
 	/*double_t *reverse_dist = (double_t *)mkl_calloc(k, sizeof(*reverse_dist), 64);*/
-	double_t *reverse_dist_log10 = (double_t *)mkl_calloc(k, sizeof(*reverse_dist_log10), 64);
-	double_t *dist2 = (double_t *)mkl_calloc(k, sizeof(*dist2), 64);
+	double_t *reverse_dist_log10 = (double_t *)GenCalloc(k, sizeof(*reverse_dist_log10), 64);
+	double_t *dist2 = (double_t *)GenCalloc(k, sizeof(*dist2), 64);
 	double_t dist[k] = { Radius * 1, Radius * 2, Radius * 3, Radius * 4,
 		Radius * 5, Radius * 6, Radius * 7, Radius * 8 };
 	double_t reverse_dist[k] = { (1 / dist[0]), (1 / dist[1]), (1 / dist[2]), (1 / dist[3]),
@@ -1532,9 +1534,16 @@ void GeneralizationCurve::SimplificationMkl()
 
 	vmdPowx(k, dist, 2, dist2, 0);
 	/* X += dist[0] + dist[1] + ... */
+#ifdef _WIN32
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 1, 1, k, 1, dist, k, E, 1, 0, &X, 1);
 	/* X2 += dist2[0] + dist2[1] + ... */
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, 1, 1, k, 1, dist2, k, E, 1, 0, &X2, 1);
+#else
+	X = dist[0] + dist[1] + dist[2] + dist[3]
+		+ dist[4] + dist[5] + dist[6] + dist[7];
+	X2 = dist2[0] + dist2[1] + dist2[2] + dist2[3]
+		+ dist2[4] + dist2[5] + dist2[6] + dist2[7];
+#endif
 
 	vmdLog10(k, (const double_t *)reverse_dist, reverse_dist_log10, 0);
 
@@ -1546,8 +1555,8 @@ void GeneralizationCurve::SimplificationMkl()
 #pragma omp parallel for if ((this->parallelism_enabled) && (ResultSegmentCount >= 4))
 	for (int i = 0; i < ResultSegmentCount; ++i)
 	{
-		NE[i] = (double_t *)mkl_calloc(k, sizeof(double_t), 64);
-		Dbc[i] = (double_t *)mkl_calloc(k, sizeof(double_t), 64);
+		NE[i] = (double_t *)GenCalloc(k, sizeof(double_t), 64);
+		Dbc[i] = (double_t *)GenCalloc(k, sizeof(double_t), 64);
 
 		for (uint32_t j = 0; j < k; ++j)
 		{
