@@ -38,8 +38,10 @@ public:
 
 	static void InitializeLogging(std::string logging_path)
 	{
+#ifdef _WIN32
 		fout.open(logging_path,
 			  ios_base::trunc | ios_base::in | ios_base::out);
+#endif
 	}
 };
 

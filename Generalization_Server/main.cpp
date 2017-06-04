@@ -2,45 +2,25 @@
 #include <list>
 #include <vector>
 #include <iostream>
-#include "GeneralizationFile.h"
+#include "GeneralizationBenchmark.h"
+
+#ifdef _WIN32
 #include <conio.h>
-#include "GeneralizationCurve.h"
+#include "GeneralizationFile.h"
 #include "GeneralizationServer.h"
 #include "GeneralizationWorker.h"
 #include "GeneralizationProgramOpt.h"
 #include "Thread.h"
+#endif
 
 using namespace std;
 
+#ifdef _WIN32
 void HandleManagerServerType(void);
 void HandleStandaloneServerType(GeneralizationProgramOpt *programOpt);
 
-//static GeneralizationFile GenFile;
-//static GeneralizationDataBase GenDataBase;
-
 int main(int argc, char* argv[])
 {
-	///* TODO: should be removed, only should work as a server */
-	///*GenFile.ParseAllDataInFile();
-
-	//curves Map = GenFile.GetCurves();*/
-
-	///*for (uint32_t i = 0; i < GenFile.GetNumberOfCurves(); i++)
-	//{
-	//	for (uint32_t j = 0; j < Map[i].first.size(); j++)
-	//	{
-	//		cout << Map[i].first[j] << " " << Map[i].second[j] << endl;
-	//	}
-	//}*/
-
-	///*GeneralizationCurve *Curve = new GeneralizationCurve;
-
-	//Curve->BuildCurve(Map[0].first.size(), &Map[0]);
-	//Curve->Adduction();
-	//Curve->Segmentation();
-	//Curve->SetValueOfScale(8);
-	//Curve->Simplification();
-	//Curve->Smoothing();*/
 	GeneralizationProgramOpt *programOpt = new GeneralizationProgramOpt(argc, argv);
 
 
@@ -106,3 +86,77 @@ void HandleStandaloneServerType(GeneralizationProgramOpt *programOpt)
 
 	_getch();
 }
+#else
+#include <assert.h>
+
+struct AlgorithmParams
+{
+	double C;
+	uint32_t Np;
+	uint32_t Ns;
+	double f;
+	uint32_t Ninit;
+	double M;
+	int OpenMP;
+	int IntelMKL;
+};
+
+const double _C = 0.5;
+const uint32_t _Np = 900;
+const uint32_t _Ninit = 900;
+const uint32_t _Ns = 15;
+const double _f = 5;
+const double _M = 5;
+
+int main(int argc, char* argv[])
+{
+	assert(argc > 5);
+	GeneralizationBenchmark *BenchCurves;
+	uint32_t pps = std::stoi(argv[1]);
+	uint32_t min_seg_cnt = std::stoi(argv[2]);
+	uint32_t max_seg_cnt = std::stoi(argv[3]);
+	uint32_t Count = max_seg_cnt - min_seg_cnt + 1;
+	void* raw_memory = operator new[](Count * sizeof(GeneralizationBenchmark));
+	BenchCurves = static_cast<GeneralizationBenchmark*>(raw_memory);
+	uint32_t iter_thr_mem = 0;
+
+	AlgorithmParams algParams;
+	algParams.C = _C;
+	algParams.Np = _Np;
+	algParams.Ns = _Ns;
+	algParams.f = _f;
+	algParams.M = _M;
+	algParams.Ninit = _Ninit;
+	algParams.OpenMP = std::stoi(argv[4]);
+	algParams.IntelMKL = std::stoi(argv[5]);
+
+	for (size_t i = min_seg_cnt; i <= max_seg_cnt; ++i) 
+	{
+		new(&BenchCurves[iter_thr_mem])GeneralizationBenchmark(pps, i, algParams.C,
+			algParams.Np, algParams.Ns, algParams.f,
+			algParams.Ninit, algParams.OpenMP);
+		iter_thr_mem++;
+	}
+
+	for (uint32_t i = 0; i < max_seg_cnt - min_seg_cnt + 1; i++)
+	{
+		GeneralizationBenchmark *benchmark_curve = &BenchCurves[i];
+		benchmark_curve->SetMaxValue(max_seg_cnt * pps + 1);
+		benchmark_curve->SetUseOpenMP(algParams.OpenMP);
+		benchmark_curve->SetUseMkl(algParams.IntelMKL);
+		benchmark_curve->InitForBenchmarks();
+
+		benchmark_curve->RunBenchmarkOnSegmentedCurve();
+
+		std::cout << "Simplification timer:" <<
+			benchmark_curve->GetsimplificationTimer();
+		std::cout << " | Smoothing timer:" <<
+			benchmark_curve->GetsmoothingTimer() << endl;
+
+		benchmark_curve->~GeneralizationBenchmark();
+	}
+
+	return 0;
+}
+
+#endif
