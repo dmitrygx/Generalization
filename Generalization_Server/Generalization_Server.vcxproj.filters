@@ -46,6 +46,12 @@
     <Filter Include="Source Files\log">
       <UniqueIdentifier>{81071cfa-28df-483c-9046-4901c0fd754f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\benchmark">
+      <UniqueIdentifier>{b26aeabf-6ad0-492f-b4a4-95dbb123f882}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\benchmark">
+      <UniqueIdentifier>{23251978-d661-4347-ab22-9e5c751ac530}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -80,6 +86,9 @@
     </ClCompile>
     <ClCompile Include="GeneralizationLogging.cpp">
       <Filter>Source Files\log</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneralizationBenchmark.cpp">
+      <Filter>Source Files\benchmark</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -118,6 +127,9 @@
     </ClInclude>
     <ClInclude Include="GeneralizationLogging.h">
       <Filter>Header Files\log</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneralizationBenchmark.h">
+      <Filter>Header Files\benchmark</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

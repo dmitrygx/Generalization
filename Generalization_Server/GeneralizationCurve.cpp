@@ -136,7 +136,30 @@ curve* GeneralizationCurve::CurveDup(curve *fromCurve)
 
 	return resCurve;
 }
+/* Becnhmark-specific helpers */
+void GeneralizationCurve::SetAdductionPointsPerSegment(curve* adduction_points,
+	uint32_t pps, uint32_t seg_count)
+{
+	uint32_t iter = 0;
 
+	AdductionPointsInSegment.resize(seg_count);
+	CountOfAdductionPointsInSegment.resize(seg_count);
+	ResultSegmentCount = seg_count;
+
+	for (uint32_t i = 0; i < ResultSegmentCount; i++)
+	{
+		X(AdductionPointsInSegment[i]).resize(pps);
+		Y(AdductionPointsInSegment[i]).resize(pps);
+		CountOfAdductionPointsInSegment[i] = pps;
+		for (uint32_t j = 0; j < pps; j++)
+		{
+			X(AdductionPointsInSegment[i])[j] = X(*adduction_points)[iter];
+			Y(AdductionPointsInSegment[i])[j] = Y(*adduction_points)[iter];
+			iter++;
+		}
+	}
+}
+/* ~Becnhmark-specific helpers */
 /* Getters */
 curve* GeneralizationCurve::GetSouceCurve()
 {
@@ -200,6 +223,15 @@ void GeneralizationCurve::BuildCurve(uint32_t countOfPoints, curve *newCurve)
 
 	AverageDistance = 0;
 	Radius = 0;
+}
+
+void GeneralizationCurve::InitForBenchmarks()
+{
+	if (math_type == StdMath)
+		GridMath.resize(10000);
+	else
+		GridMkl = (bool *)mkl_calloc(1, dimension[0] * dimension[1] * sizeof(*GridMkl),
+			64);
 }
 
 double_t GeneralizationCurve::ComputeDistancesMath(void)
@@ -1662,8 +1694,10 @@ double_t GeneralizationCurve::ComputeSinuosityCoeff(curve *Obj,
 			((Y(segments[numOfSegm - 1])[remainPart - 1] - Y(segments[numOfSegm - 1])[0]) *
 			 (Y(segments[numOfSegm - 1])[remainPart - 1] - Y(segments[numOfSegm - 1])[0]))
 		);
-
-		Ksegm[numOfSegm - 1] = sumOfDistances[numOfSegm - 1] / boundDist[numOfSegm - 1];
+			
+		Ksegm[numOfSegm - 1] = (objSizes[numOfSegm - 1] != 1) ?
+				sumOfDistances[numOfSegm - 1] / boundDist[numOfSegm - 1] :
+				0;
 		K += Ksegm[numOfSegm - 1];
 	}
 	else
@@ -1706,20 +1740,23 @@ double_t GeneralizationCurve::ComputeSinuosityCoeff(curve *Obj,
 
 GeneralizationCurve::~GeneralizationCurve()
 {
-	delete[] Points;
-	delete[] AdductionPoints;
+	if (Points)
+		delete[] Points;
+	if (AdductionPoints)
+		delete[] AdductionPoints;
 
 	for (uint32_t i = 0; i < ResultSegmentCount; ++i)
 	{
-		delete[] PointsAfterSimplification[i];
+		delete PointsAfterSimplification[i];
 	}
 	delete[] PointsAfterSimplification;
 
 	for (uint32_t i = 0; i < ResultSegmentCount; ++i)
 	{
-		delete[] PointsAfterSmoothing[i];
+		delete PointsAfterSmoothing[i];
 	}
 	delete[] PointsAfterSmoothing;
 
-	mkl_free(GridMkl);
+	if (math_type == IntelMklMath)
+		mkl_free(GridMkl);
 }

@@ -146,6 +146,23 @@ void GeneralizationRequestCurve::Initialize()
 	);
 }
 
+void GeneralizationRequestCurve::RunBenchmarkOnSegmentedCurve()
+{
+	timer.total_time = new cpu_timer;
+	StartTime(simpl_time);
+	this->Simplification();
+	StopTime(simpl_time, timer, simplification);
+	PauseTime(*timer.total_time);
+	VerboseTime(timer, simplification);
+
+	ResumeTime(*timer.total_time);
+	StartTime(smooth_time);
+	this->Smoothing();
+	StopTime(smooth_time, timer, smoothing);
+	StopTime(*timer.total_time, timer, total);
+	VerboseTime(timer, smoothing);
+}
+
 void GeneralizationRequestCurve::SetCurve(uint32_t newCountOfPoints, curve *newCurve)
 {
 	Curve = newCurve;
