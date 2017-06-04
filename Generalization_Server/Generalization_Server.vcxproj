@@ -167,6 +167,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="GeneralizationBenchmark.cpp" />
     <ClCompile Include="GeneralizationDataBase.cpp">
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</CompileAsManaged>
       <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</CompileAsManaged>
@@ -206,6 +207,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
+    <ClInclude Include="GeneralizationBenchmark.h" />
     <ClInclude Include="GeneralizationCurve.h" />
     <ClInclude Include="GeneralizationDataBase.h" />
     <ClInclude Include="GeneralizationDataBaseLoadFuncs.h" />

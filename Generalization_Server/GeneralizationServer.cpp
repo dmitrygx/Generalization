@@ -52,6 +52,7 @@ GeneralizationServer::GeneralizationServer(const http::uri& url) : listener(http
 	allowedPath[static_cast<string_t>(U("smoothing_curve"))] = SMOOTHING_CURVE;
 	allowedPath[static_cast<string_t>(U("save_curve"))] = SAVE_CURVE;
 	allowedPath[static_cast<string_t>(U("generalization_curve"))] = GENERALIZE_CURVE;
+	allowedPath[static_cast<string_t>(U("benchmark"))] = BENCHMARK;
 
 	running = true;
 	/*try
@@ -155,6 +156,28 @@ void GeneralizationServer::AllocateMemCurves(size_t Count, double_t C_, uint32_t
 	for (size_t i = 0; i < Count; ++i) {
 		new(&Curves[i])GeneralizationRequestCurve(C_, Np_, Ns_, f_, Ninit_, parallel_algortihm);
 	}
+}
+
+void GeneralizationServer::InitializeBenchmark(uint32_t pps, uint32_t min_seg_cnt,
+	uint32_t max_seg_cnt, AlgorithmParams &algParams)
+{
+	uint32_t Count = max_seg_cnt - min_seg_cnt + 1;
+	void* raw_memory = operator new[](Count * sizeof(GeneralizationBenchmark));
+	BenchCurves = static_cast<GeneralizationBenchmark*>(raw_memory);
+	uint32_t iter_thr_mem = 0;
+	for (size_t i = min_seg_cnt; i <= max_seg_cnt; ++i) 
+	{
+		new(&BenchCurves[iter_thr_mem])GeneralizationBenchmark(pps, i, algParams.C,
+			algParams.Np, algParams.Ns, algParams.f,
+			algParams.Ninit, algParams.OpenMP);
+		iter_thr_mem++;
+	}
+}
+
+void GeneralizationServer::FinalizeBenchmark()
+{
+	void* raw_memory = static_cast<void*>(BenchCurves);
+	free(raw_memory);
 }
 
 #define MethodInvoke(type, method)	\
@@ -942,6 +965,151 @@ void GeneralizationServer::handle_request(http_request request,
 		root[L"sinuosity_coef_source"] = source_curve_coeff;
 		root[L"sinuosity_coef_result"] = result_curve_coeff;
 
+		cout << "We are ready to reply" << endl;
+		request.reply(status_codes::OK, root);
+		return;
+	}
+	else if (reqObj == BENCHMARK)
+	{
+		auto points_per_seg = http_get_vars.find(U("points_per_seg"));
+		auto min_seg_cnt = http_get_vars.find(U("min_seg_cnt"));
+		auto max_seg_cnt = http_get_vars.find(U("max_seg_cnt"));
+		auto found_alg_params_OpenMP = http_get_vars.find(U("params_OpenMP"));
+		auto found_alg_params_C = http_get_vars.find(U("params_C"));
+		auto found_alg_params_Np = http_get_vars.find(U("params_Np"));
+		auto found_alg_params_Ns = http_get_vars.find(U("params_Ns"));
+		auto found_alg_params_f = http_get_vars.find(U("params_f"));
+		auto found_alg_params_M = http_get_vars.find(U("params_M"));
+		auto found_alg_params_Ninit = http_get_vars.find(U("params_Ninit"));
+		auto found_alg_params_IntelMKL = http_get_vars.find(U("params_IntelMKL"));
+
+		if ((found_alg_params_C == end(http_get_vars)) ||
+		    (found_alg_params_Np == end(http_get_vars)) ||
+		    (found_alg_params_Ns == end(http_get_vars)) ||
+		    (found_alg_params_f == end(http_get_vars)) ||
+		    (found_alg_params_f == end(http_get_vars)) ||
+		    (found_alg_params_Ninit == end(http_get_vars)) ||
+		    (found_alg_params_IntelMKL == end(http_get_vars)) ||
+		    (found_alg_params_OpenMP == end(http_get_vars))) {
+			auto err = U("Request received with get var \"type\" "
+				"or \"path\" omitted from query.");
+			wcout << err << endl;
+			/* BAD */
+			request.reply(status_codes::BadRequest);
+			return;
+		}
+
+		wstring params_C = found_alg_params_C->second;
+		wstring params_Np = found_alg_params_Np->second;
+		wstring params_Ns = found_alg_params_Ns->second;
+		wstring params_f = found_alg_params_f->second;
+		wstring params_M = found_alg_params_M->second;
+		wstring params_Ninit = found_alg_params_Ninit->second;
+
+		wstring params_OpenMP = found_alg_params_OpenMP->second;
+		wstring params_IntelMKL = found_alg_params_IntelMKL->second;
+
+		std::function<wstring(wstring, const char*, const char*)> replacer =
+			[](wstring str, const char* from, const char* to) {
+			boost::replace_all(str, from, to);
+			return str;
+		};
+
+
+		boost::replace_all(params_C, "%2C", ",");
+		boost::replace_all(params_Np, "%2C", ",");
+		boost::replace_all(params_Ns, "%2C", ",");
+		boost::replace_all(params_f, "%2C", ",");
+		boost::replace_all(params_M, "%2C", ",");
+		boost::replace_all(params_Ninit, "%2C", ",");
+		boost::replace_all(params_OpenMP, "%2C", ",");
+		boost::replace_all(params_IntelMKL, "%2C", ",");
+
+		AlgorithmParams algParams;
+		algParams.C = (double)std::stod(replacer(
+			replacer(params_C, "%2C", ","), ",", "."));
+		algParams.Np = (uint32_t)std::stoi(replacer(
+			replacer(params_Np, "%2C", ","), ",", "."));
+		algParams.Ns = (uint32_t)std::stoi(replacer(
+			replacer(params_Ns, "%2C", ","), ",", "."));
+		algParams.f = (double)std::stod(replacer(
+			replacer(params_f, "%2C", ","), ",", "."));
+		algParams.M = (double)std::stod(replacer(
+			replacer(params_M, "%2C", ","), ",", "."));
+		algParams.Ninit = (uint32_t)std::stoi(replacer(
+			replacer(params_Ninit, "%2C", ","), ",", "."));
+		algParams.OpenMP = (int)std::stoi(replacer(replacer(
+			params_OpenMP, "%2C", ","), ",", "."));
+		algParams.IntelMKL = (int)std::stoi(replacer(replacer(
+			params_IntelMKL, "%2C", ","), ",", "."));
+
+		cout << "Received algorithm's parameters:" << endl <<
+			"C = " << algParams.C << " (" <<
+			utility::conversions::to_utf8string(params_C) << ")" << endl <<
+			"Np = " << algParams.Np << " (" <<
+			utility::conversions::to_utf8string(params_Np) << ")" << endl <<
+			"Ns = " << algParams.Ns << " (" <<
+			utility::conversions::to_utf8string(params_Ns) << ")" << endl <<
+			"f = " << algParams.f << " (" <<
+			utility::conversions::to_utf8string(params_f) << ")" << endl <<
+			"M = " << algParams.M << " (" <<
+			utility::conversions::to_utf8string(params_M) << ")" << endl <<
+			"Ninit = " << algParams.Ninit << " (" <<
+			utility::conversions::to_utf8string(params_Ninit) << ")" << endl <<
+			"OpenMP = " << algParams.OpenMP << " (" <<
+			utility::conversions::to_utf8string(params_OpenMP) << ")" << endl <<
+			"IntelMKL = " << algParams.IntelMKL << " (" <<
+			utility::conversions::to_utf8string(params_IntelMKL) << ")" << endl;
+
+		int err;
+
+		if ((points_per_seg == end(http_get_vars)) ||
+		    (min_seg_cnt == end(http_get_vars)) ||
+		    (max_seg_cnt == end(http_get_vars))){
+			auto err = U("Request received with get var \"curve_number\" omitted from query.");
+			wcout << err << endl;
+			/* BAD */
+			request.reply(status_codes::BadRequest);
+			return;
+		}
+
+		auto requested_pps = points_per_seg->second;
+		auto requested_min_seg_cnt = min_seg_cnt->second;
+		auto requested_max_seg_cnt = max_seg_cnt->second;
+
+		uint32_t pps = std::stoi(requested_pps);
+		uint32_t min_seg_count = std::stoi(requested_min_seg_cnt);
+		uint32_t max_seg_count = std::stoi(requested_max_seg_cnt);
+
+
+		wcout << U("Received request BENCHMARK: point per segment = ") << pps <<
+			U(" minimum segment count = ") << min_seg_count <<
+			U(" maximum segment count = ") << max_seg_count << endl;
+
+		InitializeBenchmark(pps, min_seg_count, max_seg_count, algParams);
+		json::value root;
+		auto array_timers = answer.array();
+		for (uint32_t i = 0; i < max_seg_count - min_seg_count + 1; i++)
+		{
+			GeneralizationBenchmark *benchmark_curve = &BenchCurves[i];
+			benchmark_curve->SetUseOpenMP(algParams.OpenMP);
+			benchmark_curve->SetUseMkl(algParams.IntelMKL);
+			benchmark_curve->InitForBenchmarks();
+
+			benchmark_curve->RunBenchmarkOnSegmentedCurve();
+			web::json::value itemTimer;
+
+			itemTimer[L"simpl_time"] = benchmark_curve->GetsimplificationTimer();
+			itemTimer[L"smooth_time"] = benchmark_curve->GetsmoothingTimer();
+
+			array_timers[i] = itemTimer;
+
+			benchmark_curve->~GeneralizationBenchmark();
+		}
+		root[L"timers"] = array_timers;
+
+
+		FinalizeBenchmark();
 		cout << "We are ready to reply" << endl;
 		request.reply(status_codes::OK, root);
 		return;

@@ -123,6 +123,7 @@ public:
 	string GetDBCode();
 	long GetDBNumber();
 	size_t DispatchEvent(Event_t newEvent);
+	void RunBenchmarkOnSegmentedCurve();
 	virtual ~GeneralizationRequestCurve();
 	InitTimerGetter(adduction);
 	InitTimerGetter(segmentation);

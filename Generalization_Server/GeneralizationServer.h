@@ -15,6 +15,7 @@
 #include "GeneralizationRequestCurve.h"
 #include "GeneralizationFile.h"
 #include "GeneralizationDataBase.h"
+#include "GeneralizationBenchmark.h"
 
 using namespace utility;                    // Common utilities like string conversions
 using namespace web;                        // Common features like URIs.
@@ -54,7 +55,7 @@ protected:
 		SMOOTHING_CURVE			= 5,
 		GENERALIZE_CURVE		= 6,
 		SAVE_CURVE			= 7,
-		METRICS				= 8
+		BENCHMARK			= 8
 	} Objects_t;
 
 	map <string_t, Objects_t> allowedPath;
@@ -78,6 +79,7 @@ protected:
 	curves CurvesMap;
 
 	GeneralizationRequestCurve *Curves;
+	GeneralizationBenchmark *BenchCurves;
 
 	boolean running;
 
@@ -112,6 +114,9 @@ public:
 	}
 	void AllocateMemCurves(size_t Count, double_t C_, uint32_t Np_,
 		uint32_t Ns_, double_t f_, uint32_t Ninit_);
+	void InitializeBenchmark(uint32_t pps, uint32_t min_seg_cnt,
+		uint32_t max_seg_cnt, AlgorithmParams &algParams);
+	void FinalizeBenchmark();
 	void SetUpdateDBFlag(bool value)
 	{
 		update_db = false;

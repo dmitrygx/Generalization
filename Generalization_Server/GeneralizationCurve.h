@@ -24,7 +24,7 @@ typedef enum MathType {
 
 class GeneralizationCurve
 {
-private:
+protected:
 	bool parallelism_enabled;
 	double_t C;
 	uint32_t Ninit;
@@ -46,13 +46,13 @@ private:
 		uint32_t *CountOfAdductionPointsInSegment,
 		uint32_t i, uint32_t &CountOfPoints)> SimplificationOfSegment[MaxMath];
 
-	uint32_t CountPoints;
-	curve *Points;
+	uint32_t CountPoints = 0;
+	curve *Points = NULL;
 	std::vector<double_t> Distance;
 	double_t AverageDistance;
 	double_t Radius;
-	curve *AdductionPoints; // TODO
-	uint32_t AdductionCount;
+	curve *AdductionPoints = NULL; // TODO
+	uint32_t AdductionCount = 0;
 
 	uint32_t CountOfSegments;
 	std::vector<uint32_t> SegmentCountPoints;
@@ -157,6 +157,9 @@ private:
 		/* ~Intersection */
 
 	/* ~Utility */
+protected:
+	void SetAdductionPointsPerSegment(curve* adduction_points,
+		uint32_t pps, uint32_t seg_count);
 public:
 	GeneralizationCurve();
 	GeneralizationCurve(double_t C_ = 0.5, uint32_t Np_ = 500,
@@ -211,6 +214,7 @@ public:
 	/* ~Getters */
 
 	void BuildCurve(uint32_t countOfPoints, curve *newCurve);
+	void InitForBenchmarks();
 	void SetValueOfScale(double_t m);
 	void SetParallelismMode(bool mode);
 	void Adduction();
